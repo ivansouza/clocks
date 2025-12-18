@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relógio 3D Industrial - Iluminação Original</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 40px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .label-main {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+<div id="ui-overlay">
+    <div class="label-main">Optical Chronograph</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<!-- Shader para o Efeito de Magnificação (Lupa Fixa no Centro) -->
+<script id="magnify-vertex" type="x-shader/x-vertex">
+    varying vec2 vUv;
+    varying vec3 vWorldPosition;
+    void main() {
+        vUv = uv;
+        vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+</script>
+
+<script id="magnify-fragment" type="x-shader/x-fragment">
+    varying vec2 vUv;
+    varying vec3 vWorldPosition;
+    uniform sampler2D tNumbers;
+    uniform float uMagnify;    
+    uniform float uLensHeight;
+
+    void main() {
+        vec2 uv = vUv;
+        float dist = abs(vWorldPosition.y);
+        
+        if (dist < uLensHeight) {
+            float normalizedDist = dist / uLensHeight;
+            float distortion = (1.0 - pow(normalizedDist, 2.0)) * (uMagnify - 1.0);
+            uv.y = uv.y - (vWorldPosition.y * 0.08) * (distortion / uMagnify);
+            uv.x = uv.x - (uv.x - 0.5) * (distortion / uMagnify);
+        }
+
+        vec4 tex = texture2D(tNumbers, uv);
+        float focus = smoothstep(uLensHeight, 0.0, dist);
+        vec3 color = tex.rgb * (1.1 + focus * 0.4);
+        gl_FragColor = vec4(color, tex.a);
+    }
+</script>
+
+<script>
+    const CONFIG = {
+        bg: 0x000000,
+        trackColor: 0x1a1a1a,
+        frameColor: 0x444444,
+        spacing: 1.8,
+        trackHeight: 12,        
+        trackWidth: 1.3,
+        numPlaneHeight: 11,     
+        lensMagnify: 1.8,       
+        lensArea: 0.6,          
+        snapSpeed: 0.12,
+        cameraDist: 35,         // Distância afastada solicitada
+        hAngle: 39              // Ângulo horizontal solicitado
+    };
+
+    let scene, camera, renderer, controls, raycaster;
+    let columns = [];
+    let isDragging = false;
+    let activeColumn = null;
+    let mouse = new THREE.Vector2();
+    let prevMouseY = 0;
+
+    class Column {
+        constructor(index, maxVal) {
+            this.index = index;
+            this.maxVal = maxVal;
+            this.totalSlots = maxVal + 1;
+            this.currentValue = 0; 
+            this.targetValue = 0;  
+            this.isAdjusting = false; 
+
+            this.group = new THREE.Group();
+            this.group.position.x = (index - 2.5) * CONFIG.spacing;
+
+            this.movingPart = new THREE.Group();
+
+            // 1. Trilha
+            const trackGeom = new THREE.BoxGeometry(CONFIG.trackWidth, CONFIG.trackHeight, 0.4);
+            const trackMat = new THREE.MeshStandardMaterial({ 
+                color: CONFIG.trackColor, 
+                roughness: 0.5,
+                metalness: 0.3
+            });
+            this.track = new THREE.Mesh(trackGeom, trackMat);
+            this.movingPart.add(this.track);
+
+            // 2. Textura (Fonte da Versão 1: 300, 140px)
+            this.canvas = document.createElement('canvas');
+            this.canvas.width = 256;
+            this.canvas.height = 2048; 
+            const ctx = this.canvas.getContext('2d');
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '300 140px "Inter", sans-serif'; 
+            ctx.fillStyle = '#ffffff';
+            
+            const stepPx = 2048 / this.totalSlots;
+            for(let i=0; i <= maxVal; i++) {
+                const y = 2048 - (i * stepPx + stepPx/2);
+                ctx.fillText(i, 128, y);
+            }
+            this.numTexture = new THREE.CanvasTexture(this.canvas);
+            this.numTexture.anisotropy = 8;
+
+            // 3. Plano de Números
+            this.shaderMat = new THREE.ShaderMaterial({
+                uniforms: {
+                    tNumbers: { value: this.numTexture },
+                    uLensHeight: { value: CONFIG.lensArea },
+                    uMagnify: { value: CONFIG.lensMagnify }
+                },
+                vertexShader: document.getElementById('magnify-vertex').textContent,
+                fragmentShader: document.getElementById('magnify-fragment').textContent,
+                transparent: true
+            });
+
+            const numGeom = new THREE.PlaneGeometry(CONFIG.trackWidth * 0.9, CONFIG.numPlaneHeight);
+            this.numMesh = new THREE.Mesh(numGeom, this.shaderMat);
+            this.numMesh.position.z = 0.21;
+            this.movingPart.add(this.numMesh);
+
+            this.group.add(this.movingPart);
+
+            // 4. Lente Fixa
+            this.lens = new THREE.Group();
+            const frameMat = new THREE.MeshStandardMaterial({ color: CONFIG.frameColor, metalness: 0.8, roughness: 0.2 });
+            this.lens.add(new THREE.Mesh(new THREE.TorusGeometry(0.58, 0.04, 16, 64), frameMat));
+
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                transmission: 0.95,
+                thickness: 0.5,
+                roughness: 0.0,
+                transparent: true,
+                opacity: 0.3
+            });
+            const glass = new THREE.Mesh(new THREE.SphereGeometry(0.58, 32, 32, 0, Math.PI*2, 0, Math.PI*0.3), glassMat);
+            glass.rotation.x = -Math.PI/2;
+            glass.position.z = 0.05;
+            this.lens.add(glass);
+            this.lens.position.z = 0.35;
+            this.group.add(this.lens);
+
+            scene.add(this.group);
+        }
+
+        update() {
+            this.currentValue += (this.targetValue - this.currentValue) * CONFIG.snapSpeed;
+            const slotHeight = CONFIG.numPlaneHeight / this.totalSlots;
+            const basePos = -CONFIG.numPlaneHeight / 2 + slotHeight / 2;
+            const targetY = basePos + (this.currentValue * slotHeight);
+            this.movingPart.position.y = -targetY;
+        }
+
+        handleDrag(deltaY) {
+            const sensitivity = 0.015; 
+            // Movimento intuitivo: dedo sobe -> coluna sobe
+            this.currentValue += deltaY * sensitivity;
+            this.currentValue = Math.max(0, Math.min(this.maxVal, this.currentValue));
+            this.targetValue = this.currentValue;
+        }
+
+        snap() {
+            this.targetValue = Math.round(this.currentValue);
+            setTimeout(() => { this.isAdjusting = false; }, 500);
+        }
+    }
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(CONFIG.bg);
+
+        camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 1000);
+        
+        // Posição para 39 graus horizontal
+        const hRad = CONFIG.hAngle * (Math.PI / 180);
+        const xPos = CONFIG.cameraDist * Math.sin(hRad);
+        const zPos = CONFIG.cameraDist * Math.cos(hRad);
+        camera.position.set(xPos, 5, zPos);
+        camera.lookAt(0, 0, 0);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.enablePan = false;
+
+        // --- ILUMINAÇÃO ORIGINAL RESTAURADA ---
+        scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+        
+        const mainLight = new THREE.PointLight(0xffffff, 1.0);
+        mainLight.position.set(10, 15, 15);
+        scene.add(mainLight);
+
+        const blueRim = new THREE.PointLight(0x4444ff, 0.5);
+        blueRim.position.set(-15, -5, -5);
+        scene.add(blueRim);
+        // --------------------------------------
+
+        raycaster = new THREE.Raycaster();
+
+        columns.push(new Column(0, 2)); 
+        columns.push(new Column(1, 9)); 
+        columns.push(new Column(2, 5)); 
+        columns.push(new Column(3, 9)); 
+        columns.push(new Column(4, 5)); 
+        columns.push(new Column(5, 9)); 
+
+        window.addEventListener('mousedown', onDown);
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+        window.addEventListener('resize', onResize);
+        window.addEventListener('touchstart', (e) => onDown(e.touches[0]), {passive: false});
+        window.addEventListener('touchmove', (e) => onMove(e.touches[0]), {passive: false});
+        window.addEventListener('touchend', onUp);
+
+        animate();
+    }
+
+    function onResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function onDown(e) {
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        prevMouseY = e.clientY;
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObjects(columns.map(c => c.track));
+        if (hits.length > 0) {
+            isDragging = true;
+            controls.enabled = false;
+            activeColumn = columns.find(c => c.track === hits[0].object);
+            activeColumn.isAdjusting = true;
+        }
+    }
+
+    function onMove(e) {
+        if (!isDragging || !activeColumn) return;
+        const deltaY = e.clientY - prevMouseY;
+        activeColumn.handleDrag(deltaY);
+        prevMouseY = e.clientY;
+    }
+
+    function onUp() {
+        if (activeColumn) activeColumn.snap();
+        isDragging = false;
+        activeColumn = null;
+        controls.enabled = true;
+    }
+
+    function updateClock() {
+        const now = new Date();
+        const vals = [
+            Math.floor(now.getHours() / 10), now.getHours() % 10,
+            Math.floor(now.getMinutes() / 10), now.getMinutes() % 10,
+            Math.floor(now.getSeconds() / 10), now.getSeconds() % 10
+        ];
+        columns.forEach((col, i) => {
+            if (!col.isAdjusting) col.targetValue = vals[i];
+        });
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        updateClock();
+        columns.forEach(c => c.update());
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    window.onload = init;
+</script>
+
+</body>
+</html>

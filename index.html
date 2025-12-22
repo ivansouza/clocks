@@ -23,85 +23,115 @@
             border: 1px solid #30363d;
             border-radius: 12px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
         }
-        h1 {
-            color: #58a6ff;
-            border-bottom: 1px solid #30363d;
-            padding-bottom: 10px;
-            font-weight: 300;
+        .lang-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
         }
-        .project-list {
-            list-style: none;
-            padding: 0;
-        }
-        .project-item {
-            margin-bottom: 25px;
-            padding: 20px;
+        .lang-btn {
+            background: #21262d;
             border: 1px solid #30363d;
-            border-radius: 8px;
-            transition: transform 0.2s, border-color 0.2s;
+            color: #c9d1d9;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin-left: 5px;
         }
-        .project-item:hover {
-            transform: translateY(-2px);
-            border-color: #58a6ff;
-        }
-        .project-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #f0f6fc;
-            text-decoration: none;
-            display: block;
-            margin-bottom: 8px;
-        }
-        .project-description {
-            font-size: 0.95rem;
-            color: #8b949e;
-        }
-        .github-link {
-            display: inline-block;
-            margin-top: 30px;
-            color: #8b949e;
-            text-decoration: none;
-            font-size: 0.85rem;
-        }
-        .github-link:hover {
-            color: #58a6ff;
-        }
+        .lang-btn:hover { background: #30363d; }
+        .lang-btn.active { border-color: #58a6ff; color: #58a6ff; }
+
+        h1 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; font-weight: 300; }
+        .project-list { list-style: none; padding: 0; margin-top: 30px; }
+        .project-item { margin-bottom: 25px; padding: 20px; border: 1px solid #30363d; border-radius: 8px; transition: 0.2s; }
+        .project-item:hover { transform: translateY(-2px); border-color: #58a6ff; }
+        .project-title { font-size: 1.2rem; font-weight: 600; color: #f0f6fc; text-decoration: none; display: block; margin-bottom: 8px; }
+        .project-description { font-size: 0.95rem; color: #8b949e; }
+        .github-link { display: inline-block; margin-top: 30px; color: #8b949e; text-decoration: none; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Optical Chronograph Series</h1>
-    <p>Uma coleção de relógios industriais 3D desenvolvidos com Three.js, explorando efeitos ópticos e shaders.</p>
+    <div class="lang-switcher">
+        <button class="lang-btn active" onclick="setLanguage('pt')">PT</button>
+        <button class="lang-btn" onclick="setLanguage('en')">EN</button>
+    </div>
+
+    <h1 id="main-title">Optical Chronograph Series</h1>
+    <p id="main-desc">Uma coleção de relógios industriais 3D desenvolvidos com Three.js, explorando efeitos ópticos e shaders.</p>
 
     <div class="project-list">
         <div class="project-item">
-            <a href="clock1.html" class="project-title">1. Relógio 3D Industrial - Dark Mode</a>
-            <div class="project-description">
-                Versão focada em alto contraste com fundo preto profundo. Apresenta uma lente de aumento que se move individualmente em cada coluna para focar no número atual.
+            <a href="clock1.html" class="project-title" id="t1">1. Relógio 3D Industrial - Dark Mode</a>
+            <div class="project-description" id="d1">
+                Versão focada em alto contraste. Apresenta uma lente de aumento que se move individualmente para focar no número atual.
             </div>
         </div>
 
         <div class="project-item">
-            <a href="clock.html" class="project-title">2. Relógio 3D Industrial - Iluminação Original</a>
-            <div class="project-description">
-                A versão base com iluminação dramática (luz de contorno azulada). Utiliza uma lente fixa central onde os trilhos deslizam por trás para marcar o tempo.
+            <a href="clock.html" class="project-title" id="t2">2. Relógio 3D Industrial - Iluminação Original</a>
+            <div class="project-description" id="d2">
+                A versão base com iluminação clássica e lente fixa central onde os trilhos deslizam por trás.
             </div>
         </div>
 
         <div class="project-item">
-            <a href="clock3.html" class="project-title">3. Relógio 3D Industrial - Neon & Segundos</a>
-            <div class="project-description">
-                Edição especial com efeito de brilho Neon Vermelho sob a lente. Introduz uma hierarquia visual onde as colunas de segundos possuem números menores que as de horas e minutos.
+            <a href="clock3.html" class="project-title" id="t3">3. Relógio 3D Industrial - Neon & Segundos</a>
+            <div class="project-description" id="d3">
+                Edição com efeito de brilho Neon Vermelho e colunas de segundos com fonte reduzida.
             </div>
         </div>
     </div>
 
-    <a href="https://github.com/ivansouza/clocks" class="github-link">
-        Ver código fonte no GitHub →
-    </a>
+    <a href="https://github.com/ivansouza/clocks" class="github-link" id="git-link">Ver código fonte no GitHub →</a>
 </div>
+
+<script>
+    const content = {
+        pt: {
+            title: "Optical Chronograph Series",
+            desc: "Uma coleção de relógios industriais 3D desenvolvidos com Three.js, explorando efeitos ópticos e shaders.",
+            t1: "1. Relógio 3D Industrial - Dark Mode",
+            d1: "Versão focada em alto contraste. Apresenta uma lente de aumento que se move individualmente para focar no número atual.",
+            t2: "2. Relógio 3D Industrial - Iluminação Original",
+            d2: "A versão base com iluminação clássica e lente fixa central onde os trilhos deslizam por trás.",
+            t3: "3. Relógio 3D Industrial - Neon & Segundos",
+            d3: "Edição com efeito de brilho Neon Vermelho e colunas de segundos com fonte reduzida.",
+            git: "Ver código fonte no GitHub →"
+        },
+        en: {
+            title: "Optical Chronograph Series",
+            desc: "A collection of industrial 3D clocks developed with Three.js, exploring optical effects and shaders.",
+            t1: "1. Industrial 3D Clock - Dark Mode",
+            d1: "High-contrast version featuring a magnifying lens that moves individually to focus on the current number.",
+            t2: "2. Industrial 3D Clock - Original Lighting",
+            d2: "Base version with classic lighting and a fixed central lens where the tracks slide behind it.",
+            t3: "3. Industrial 3D Clock - Neon & Seconds",
+            d3: "Edition with Red Neon glow effect and seconds columns with reduced font size.",
+            git: "View source code on GitHub →"
+        }
+    };
+
+    function setLanguage(lang) {
+        document.getElementById('main-title').innerText = content[lang].title;
+        document.getElementById('main-desc').innerText = content[lang].desc;
+        document.getElementById('t1').innerText = content[lang].t1;
+        document.getElementById('d1').innerText = content[lang].d1;
+        document.getElementById('t2').innerText = content[lang].t2;
+        document.getElementById('d2').innerText = content[lang].d2;
+        document.getElementById('t3').innerText = content[lang].t3;
+        document.getElementById('d3').innerText = content[lang].d3;
+        document.getElementById('git-link').innerText = content[lang].git;
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.innerText.toLowerCase() === lang) btn.classList.add('active');
+        });
+    }
+</script>
 
 </body>
 </html>

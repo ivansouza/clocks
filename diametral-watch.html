@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Diametral Trio - Ajuste Responsivo</title>
+    <title>Diametral Trio - Persistência Total</title>
     <style>
         :root {
-            --panel-bg: rgba(255, 255, 255, 0.15);
+            --panel-bg: rgba(255, 255, 255, 0.12);
             --accent: #ff9900;
         }
 
@@ -14,35 +14,32 @@
             margin: 0;
             padding: 0;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
+            height: 100vh;
+            width: 100vw;
             background-color: #e5e5e7;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             overflow: hidden;
+            touch-action: none;
             transition: background-color 0.8s ease;
         }
 
-        /* Content wrapper for better centering */
-        #appWrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        /* Área de Zoom (Apenas o relógio) */
+        #zoomWrapper {
+            position: absolute;
             width: 100%;
             height: 100%;
-            padding: 20px;
-            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.15s ease-out;
+            will-change: transform;
+            z-index: 1;
         }
 
         #canvasContainer {
             position: relative;
-            background: transparent;
-            border-radius: 50%;
-            box-shadow: 0 40px 100px rgba(0,0,0,0.2);
-            max-width: 95vw;
-            max-height: 70vh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -51,18 +48,22 @@
         canvas {
             display: block;
             border-radius: 50%;
-            width: 100%;
-            height: auto;
+            filter: drop-shadow(0 40px 80px rgba(0,0,0,0.15));
         }
 
-        /* Botão de Definições */
+        /* --- UI FIXA --- */
+        .fixed-ui {
+            position: fixed;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
         #settingsBtn {
-            position: absolute;
             top: 20px;
             right: 20px;
-            width: 42px;
-            height: 42px;
-            background: rgba(255, 255, 255, 0.3);
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.35);
             backdrop-filter: blur(15px);
             border-radius: 12px;
             display: flex;
@@ -70,182 +71,112 @@
             justify-content: center;
             cursor: pointer;
             border: 1px solid rgba(255, 255, 255, 0.4);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1000;
+            transition: transform 0.3s ease;
         }
 
-        #settingsBtn:hover {
-            transform: rotate(90deg);
-            background: rgba(255, 255, 255, 0.6);
-        }
+        #settingsBtn:hover { transform: rotate(45deg); background: rgba(255, 255, 255, 0.5); }
+        #settingsBtn svg { width: 22px; height: 22px; fill: #111; }
 
-        #settingsBtn svg {
-            width: 22px;
-            height: 22px;
-            fill: #222;
-        }
-
-        /* Painel de Configurações */
         #configPanel {
-            position: absolute;
             top: 75px;
             right: 20px;
             width: 250px;
             background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(35px) saturate(180%);
+            backdrop-filter: blur(35px) saturate(160%);
             border-radius: 24px;
-            padding: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            padding: 22px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             transform: translateX(350px);
-            transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
-            z-index: 999;
+            transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
             color: #111;
         }
 
-        #configPanel.open {
-            transform: translateX(0);
-        }
-
-        #configPanel h3 {
-            margin: 0 0 15px 0;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-weight: 800;
-            text-align: center;
-        }
+        #configPanel.open { transform: translateX(0); }
 
         .control-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
         }
 
-        .control-row label {
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            opacity: 0.8;
-        }
+        .control-row label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+        .control-row input[type="color"] { border: none; width: 30px; height: 30px; cursor: pointer; background: none; border-radius: 50%; padding: 0; }
 
-        .control-row input[type="color"] {
-            border: none;
-            width: 28px;
-            height: 28px;
-            cursor: pointer;
-            background: none;
-            padding: 0;
-            border-radius: 50%;
-        }
+        .btn-group { display: flex; gap: 8px; margin-top: 18px; }
+        .action-btn { flex: 1; padding: 12px; border-radius: 12px; border: none; font-size: 9px; font-weight: 900; text-transform: uppercase; cursor: pointer; transition: 0.2s; }
 
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .action-btn {
-            flex: 1;
-            padding: 10px;
-            border-radius: 12px;
-            border: none;
-            font-size: 9px;
-            font-weight: 900;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.3s;
-            letter-spacing: 1px;
-        }
-
-        #randomBtn { background: rgba(255,255,255,0.3); color: #000; border: 1px solid rgba(255,255,255,0.2); }
+        #randomBtn { background: rgba(255,255,255,0.4); color: #000; }
         #saveBtn { background: #111; color: #fff; }
 
-        #toast {
-            position: fixed;
+        #timeUi {
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0,0,0,0.85);
-            color: white;
-            padding: 10px 25px;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(20px);
+            padding: 14px 32px;
+            border-radius: 60px;
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .mode-btn { background: #111; color: white; border: none; padding: 10px 18px; border-radius: 30px; cursor: pointer; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .mode-btn.active { background: var(--accent); color: #000; }
+
+        #zoomBadge {
+            position: fixed;
+            bottom: 95px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            font-weight: 900;
+            color: #777;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            background: rgba(255,255,255,0.4);
+            padding: 4px 12px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #111;
+            color: #fff;
+            padding: 10px 24px;
             border-radius: 30px;
-            font-size: 12px;
+            font-size: 11px;
             opacity: 0;
             transition: opacity 0.4s;
             pointer-events: none;
             z-index: 2000;
         }
 
-        /* UI de Tempo Inferior */
-        #timeUi {
-            margin-top: 30px;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(20px);
-            padding: 14px 30px;
-            border-radius: 50px;
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            z-index: 100;
-        }
-
-        .mode-btn {
-            background: #111;
-            color: white;
-            border: none;
-            padding: 10px 18px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .mode-btn.active {
-            background: var(--accent);
-            color: #000;
-        }
-
-        input[type="range"] {
-            appearance: none;
-            width: 100px;
-            height: 3px;
-            background: rgba(0,0,0,0.1);
-            border-radius: 2px;
-            outline: none;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            appearance: none; width: 16px; height: 16px; background: var(--accent); border-radius: 50%; cursor: pointer; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        }
-
-        @media (max-width: 600px) {
-            #timeUi {
-                padding: 12px 20px;
-                gap: 15px;
-            }
-            input[type="range"] {
-                width: 80px;
-            }
-        }
+        input[type="range"] { appearance: none; width: 110px; height: 3px; background: rgba(0,0,0,0.1); border-radius: 2px; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; background: var(--accent); border-radius: 50%; cursor: pointer; border: 3px solid #fff; }
     </style>
 </head>
 <body>
 
-    <div id="toast">Preferências Guardadas</div>
+    <div id="toast">Estado Guardado</div>
 
-    <div id="settingsBtn" title="Configurações de Aparência">
+    <!-- UI FIXA -->
+    <div id="settingsBtn" class="fixed-ui" title="Configurações">
         <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.81,11.69,4.81,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.5c-1.93,0-3.5-1.57-3.5-3.5 s1.57-3.5,3.5-3.5s3.5,1.57,3.5,3.5S13.93,15.5,12,15.5z"/></svg>
     </div>
 
-    <div id="configPanel">
-        <h3>Aparência</h3>
+    <div id="configPanel" class="fixed-ui">
+        <h3>Design Trio</h3>
         <div class="control-row">
-            <label>Fundo (Semente)</label>
+            <label>Mostrador (Seed)</label>
             <input type="color" id="faceCol" value="#ffffff">
         </div>
         <div class="control-row">
@@ -260,10 +191,6 @@
             <label>Caixa</label>
             <input type="color" id="caseCol" value="#d8d8d8">
         </div>
-        <div class="control-row">
-            <label>Bezel</label>
-            <input type="color" id="bezelCol" value="#0a0a0a">
-        </div>
         
         <div class="btn-group">
             <button id="randomBtn" class="action-btn">Aleatório</button>
@@ -271,24 +198,45 @@
         </div>
     </div>
 
-    <div id="appWrapper">
+    <div id="zoomBadge" class="fixed-ui">Zoom: 100%</div>
+
+    <div id="timeUi" class="fixed-ui">
+        <button id="modeBtn" class="mode-btn active">Tempo Real</button>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 8px; font-weight: 900; color: #777; text-transform: uppercase;">Simulação</label>
+            <input type="range" id="speedRange" min="0" max="100" value="0">
+        </div>
+    </div>
+
+    <!-- ÁREA DE ZOOM -->
+    <div id="zoomWrapper">
         <div id="canvasContainer">
             <canvas id="watchCanvas"></canvas>
-        </div>
-
-        <div id="timeUi">
-            <button id="modeBtn" class="mode-btn active">Tempo Real</button>
-            <div style="display: flex; flex-direction: column; gap: 3px;">
-                <label style="font-size: 8px; font-weight: 900; color: #777; text-transform: uppercase;">Avanço Rápido</label>
-                <input type="range" id="speedRange" min="0" max="100" value="0">
-            </div>
         </div>
     </div>
 
     <script>
         const canvas = document.getElementById('watchCanvas');
         const ctx = canvas.getContext('2d');
-        const STORAGE_KEY = 'diametral_lens_v_final';
+        const zoomWrapper = document.getElementById('zoomWrapper');
+        const zoomBadge = document.getElementById('zoomBadge');
+        const toastEl = document.getElementById('toast');
+        const STORAGE_KEY = 'diametral_trio_v_complete';
+
+        // --- ESTADO ---
+        let colors = { face: "#ffffff", hand: "#ff9900", text: "#111111", watch: "#d8d8d8", bezel: "#0a0a0a" };
+        let zoomScale = 1.0;
+        let isRealTime = true;
+        let speedMult = 0;
+        let virtualOffset = 0;
+        let lastTime = 0;
+
+        const inputs = {
+            face: document.getElementById('faceCol'),
+            hand: document.getElementById('handCol'),
+            text: document.getElementById('textCol'),
+            watch: document.getElementById('caseCol')
+        };
 
         // --- UTILITÁRIOS DE COR ---
         function hexToHsl(hex) {
@@ -322,15 +270,6 @@
             return `#${f(0)}${f(8)}${f(4)}`;
         }
 
-        let colors = { face: "#ffffff", hand: "#ff9900", text: "#111111", watch: "#d8d8d8", bezel: "#0a0a0a" };
-        const inputs = {
-            face: document.getElementById('faceCol'),
-            hand: document.getElementById('handCol'),
-            text: document.getElementById('textCol'),
-            watch: document.getElementById('caseCol'),
-            bezel: document.getElementById('bezelCol')
-        };
-
         function deriveFromFace(faceHex) {
             const hsl = hexToHsl(faceHex);
             const textL = hsl.l > 60 ? 12 : 92;
@@ -340,7 +279,6 @@
             const watchL = hsl.l > 50 ? Math.max(10, hsl.l - 25) : Math.min(90, hsl.l + 25);
             const watch = hslToHex(hsl.h, Math.max(0, hsl.s - 25), watchL);
             const bezel = hslToHex(hsl.h, Math.max(0, hsl.s - 20), 10);
-
             colors = { face: faceHex, hand, text, watch, bezel };
             updateUI();
         }
@@ -349,59 +287,64 @@
             Object.keys(colors).forEach(k => { if(inputs[k]) inputs[k].value = colors[k]; });
             document.documentElement.style.setProperty('--accent', colors.hand);
             const bodyHsl = hexToHsl(colors.face);
-            document.body.style.backgroundColor = hslToHex(bodyHsl.h, 15, 90);
+            document.body.style.backgroundColor = hslToHex(bodyHsl.h, 10, 92);
+            zoomWrapper.style.transform = `scale(${zoomScale})`;
+            zoomBadge.innerText = `Zoom: ${Math.round(zoomScale * 100)}%`;
         }
 
-        function save() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(colors));
-            toast("Design Guardado");
-        }
-        function load() {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if(saved) { colors = JSON.parse(saved); updateUI(); }
-        }
-        function toast(msg) {
-            const t = document.getElementById('toast');
-            t.innerText = msg; t.style.opacity = 1;
-            setTimeout(() => t.style.opacity = 0, 2500);
+        function showToast(msg) {
+            toastEl.innerText = msg; toastEl.style.opacity = 1;
+            setTimeout(() => toastEl.style.opacity = 0, 2500);
         }
 
-        // --- EVENTOS ---
-        inputs.face.oninput = (e) => deriveFromFace(e.target.value);
-        Object.keys(inputs).forEach(k => {
-            if(k !== 'face') inputs[k].oninput = (e) => {
-                colors[k] = e.target.value;
-                if(k === 'hand') document.documentElement.style.setProperty('--accent', colors.hand);
-            };
+        // --- GESTOS E ZOOM ---
+        window.addEventListener('wheel', (e) => {
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            zoomScale = Math.max(0.5, Math.min(3.0, zoomScale + delta));
+            updateUI();
+        }, { passive: false });
+
+        let touchStartDist = 0;
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                touchStartDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+            }
         });
 
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && touchStartDist > 0) {
+                const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                const delta = (dist - touchStartDist) / 180;
+                zoomScale = Math.max(0.5, Math.min(3.0, zoomScale + delta));
+                touchStartDist = dist;
+                updateUI();
+            }
+        }, { passive: false });
+
+        // --- PERSISTÊNCIA ---
+        document.getElementById('saveBtn').onclick = () => {
+            const data = { colors, zoomScale };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            showToast("Configuração e Zoom Guardados");
+        };
+
         document.getElementById('randomBtn').onclick = () => deriveFromFace('#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0'));
-        document.getElementById('saveBtn').onclick = save;
         document.getElementById('settingsBtn').onclick = () => document.getElementById('configPanel').classList.toggle('open');
+        inputs.face.oninput = (e) => deriveFromFace(e.target.value);
+        Object.keys(inputs).forEach(k => { if(k !== 'face') inputs[k].oninput = (e) => colors[k] = e.target.value; });
 
-        // --- RENDERIZAÇÃO CANVAS ---
-        let isRealTime = true, speedMult = 0, virtualOffset = 0, lastTime = 0;
-
+        // --- RENDERIZAÇÃO ---
         function resize() {
-            // A lógica de redimensionamento agora garante que o relógio caiba em qualquer ecrã
             const width = window.innerWidth;
             const height = window.innerHeight;
-            
-            // Define o tamanho baseando-se na largura horizontal, mas limitando pela altura para não overflow
-            const size = Math.min(width * 0.85, height * 0.65, 550);
-            
-            // Garantimos que o canvas tenha resolução suficiente (retina display ready)
+            const baseSize = Math.min(width * 0.8, height * 0.6, 500);
             const dpr = window.devicePixelRatio || 1;
-            canvas.width = size * dpr;
-            canvas.height = size * dpr;
-            
-            // CSS scale
-            canvas.style.width = size + 'px';
-            canvas.style.height = size + 'px';
-            
+            canvas.width = baseSize * dpr;
+            canvas.height = baseSize * dpr;
+            canvas.style.width = baseSize + 'px';
+            canvas.style.height = baseSize + 'px';
             ctx.scale(dpr, dpr);
         }
-        
         window.addEventListener('resize', resize);
         resize();
 
@@ -423,131 +366,77 @@
         function draw(timestamp) {
             const dt = (timestamp - lastTime) / 1000;
             lastTime = timestamp;
-
-            // Usamos o tamanho atual do canvas (após o CSS scale)
-            const size = canvas.getBoundingClientRect().width;
-            const cx = size / 2;
-            const cy = size / 2;
-            const r = size * 0.44;
-
+            const size = parseFloat(canvas.style.width);
+            const cx = size / 2, cy = size / 2, r = size * 0.44;
             ctx.clearRect(0, 0, size, size);
 
-            // 1. Caixa
+            // Hardware
             ctx.fillStyle = colors.watch;
-            ctx.beginPath();
-            ctx.roundRect(cx - r*1.1, cy - r*1.35, r*2.2, r*2.7, 25);
-            ctx.fill();
+            ctx.beginPath(); ctx.roundRect(cx - r*1.1, cy - r*1.35, r*2.2, r*2.7, 25); ctx.fill();
+            ctx.fillStyle = "#181818"; ctx.fillRect(cx - r*0.75, 0, r*1.5, size);
+            ctx.beginPath(); ctx.arc(cx, cy, r + 16, 0, Math.PI * 2); ctx.fillStyle = colors.bezel; ctx.fill();
 
-            // 2. Pulseira
-            ctx.fillStyle = "#151515";
-            ctx.fillRect(cx - r*0.75, 0, r*1.5, size);
-
-            // 3. Bezel
-            ctx.beginPath(); ctx.arc(cx, cy, r + 16, 0, Math.PI * 2);
-            ctx.fillStyle = colors.bezel; ctx.fill();
-
-            // 4. Face (Clip)
+            // Face
             ctx.save();
             ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
             ctx.fillStyle = colors.face; ctx.fill();
 
-            let t;
             const now = new Date();
-            if (isRealTime) {
-                t = (now.getHours() % 12) * 3600 + now.getMinutes() * 60 + now.getSeconds() + now.getMilliseconds() / 1000;
-            } else {
-                virtualOffset += dt * speedMult * 45;
-                t = (now.getHours() % 12) * 3600 + now.getMinutes() * 60 + now.getSeconds() + virtualOffset;
-            }
+            let t = isRealTime ? 
+                (now.getHours() % 12) * 3600 + now.getMinutes() * 60 + now.getSeconds() + now.getMilliseconds() / 1000 :
+                (now.getHours() % 12) * 3600 + now.getMinutes() * 60 + now.getSeconds() + (virtualOffset += dt * speedMult * 45);
 
             const minAngle = ((t % 3600) / 3600) * Math.PI * 2 - Math.PI / 2;
             const pivotAngle = minAngle + Math.PI;
             const pivotX = cx + Math.cos(pivotAngle) * r;
             const pivotY = cy + Math.sin(pivotAngle) * r;
-
             const hourDecimal = (t % 43200) / 3600;
-            const numberRadius = r * 1.60;
-            const markerRadius = numberRadius - 48; 
+            const numR = r * 1.60, markR = numR - 48;
             const phi = minAngle - ((hourDecimal / 12) * Math.PI * 2 - Math.PI / 2);
 
-            // Disco de Números e Pontos
             ctx.save();
-            ctx.translate(pivotX, pivotY);
-            ctx.rotate(phi);
+            ctx.translate(pivotX, pivotY); ctx.rotate(phi);
             ctx.fillStyle = colors.text;
-
             for (let i = 1; i <= 12; i++) {
                 const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
-                const nx = Math.cos(angle) * numberRadius;
-                const ny = Math.sin(angle) * numberRadius;
-
-                // Numeral Perpendicular
                 ctx.save();
-                ctx.translate(nx, ny);
+                ctx.translate(Math.cos(angle) * numR, Math.sin(angle) * numR);
                 ctx.rotate(angle + Math.PI / 2);
-                ctx.font = `300 ${r * 0.22}px "Helvetica Neue", Arial`;
-                ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                ctx.font = `300 ${r * 0.22}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
                 ctx.fillText(i.toString(), 0, 0);
                 ctx.restore();
-
-                // Ponto da Hora Principal
-                ctx.beginPath();
-                ctx.arc(Math.cos(angle) * markerRadius, Math.sin(angle) * markerRadius, 3.5, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Divisões: Pontos de 10 min e Pontos de 5 min
-                const divisions = 12;
-                for (let j = 1; j < divisions; j++) {
-                    const sa = angle + (j / (12 * divisions)) * Math.PI * 2;
-                    const dotX = Math.cos(sa) * markerRadius;
-                    const dotY = Math.sin(sa) * markerRadius;
-                    
-                    ctx.beginPath();
-                    if (j % 2 === 0) {
-                        ctx.arc(dotX, dotY, 1.2, 0, Math.PI * 2);
-                    } else {
-                        ctx.arc(dotX, dotY, 0.7, 0, Math.PI * 2);
-                    }
+                ctx.beginPath(); ctx.arc(Math.cos(angle) * markR, Math.sin(angle) * markR, 3.5, 0, Math.PI * 2); ctx.fill();
+                for (let j = 1; j < 12; j++) {
+                    const sa = angle + (j / 144) * Math.PI * 2;
+                    ctx.beginPath(); 
+                    ctx.arc(Math.cos(sa) * markR, Math.sin(sa) * markR, j % 2 === 0 ? 1.2 : 0.7, 0, Math.PI * 2); 
                     ctx.fill();
                 }
             }
             ctx.restore();
 
-            // Marcador Diametral
-            ctx.save();
-            ctx.translate(cx, cy); ctx.rotate(minAngle + Math.PI / 2);
-            ctx.fillStyle = colors.hand; ctx.fillRect(-2, -r, 4, r * 2);
+            ctx.save(); ctx.translate(cx, cy); ctx.rotate(minAngle + Math.PI / 2);
+            ctx.fillStyle = colors.hand; ctx.fillRect(-2, -r, 4, r * 2); ctx.restore();
             ctx.restore();
 
-            ctx.restore(); // Fim clip mostrador
-
-            // --- LENTE DE AUMENTO (OVERLAY) ---
-            const edgeShadow = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r);
-            edgeShadow.addColorStop(0, "rgba(0,0,0,0)");
-            edgeShadow.addColorStop(1, "rgba(0,0,0,0.25)");
-            ctx.fillStyle = edgeShadow;
-            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-
-            const domeGradient = ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, 0, cx, cy, r * 1.5);
-            domeGradient.addColorStop(0, "rgba(255,255,255,0.15)");
-            domeGradient.addColorStop(1, "rgba(0,0,0,0.08)");
-            ctx.fillStyle = domeGradient;
-            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-
-            const shine = ctx.createRadialGradient(cx - r*0.4, cy - r*0.4, r*0.05, cx - r*0.4, cy - r*0.4, r*0.5);
-            shine.addColorStop(0, "rgba(255,255,255,0.3)");
-            shine.addColorStop(1, "rgba(255,255,255,0)");
-            ctx.fillStyle = shine;
-            ctx.save();
-            ctx.beginPath();
-            ctx.ellipse(cx - r*0.35, cy - r*0.35, r*0.4, r*0.2, Math.PI * 0.75, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
+            // Overlay Lente
+            const g1 = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r);
+            g1.addColorStop(0, "transparent"); g1.addColorStop(1, "rgba(0,0,0,0.2)");
+            ctx.fillStyle = g1; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+            const g2 = ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, 0, cx, cy, r * 1.5);
+            g2.addColorStop(0, "rgba(255,255,255,0.15)"); g2.addColorStop(1, "rgba(0,0,0,0.08)");
+            ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
 
             requestAnimationFrame(draw);
         }
 
-        load();
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if(saved) {
+            const data = JSON.parse(saved);
+            colors = data.colors || colors;
+            zoomScale = data.zoomScale || 1.0;
+            updateUI();
+        }
         requestAnimationFrame(draw);
     </script>
 </body>

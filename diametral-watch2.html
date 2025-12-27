@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diametral Trio - Divisões de 5 Minutos</title>
+    <style>
+        :root {
+            --panel-bg: rgba(255, 255, 255, 0.15);
+            --accent: #ff9900;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #e5e5e7;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            transition: background-color 0.8s ease;
+        }
+
+        #canvasContainer {
+            position: relative;
+            background: transparent;
+            border-radius: 50%;
+            box-shadow: 0 70px 150px rgba(0,0,0,0.25);
+        }
+
+        canvas {
+            display: block;
+            border-radius: 50%;
+        }
+
+        /* Botão de Definições */
+        #settingsBtn {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            width: 46px;
+            height: 46px;
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(15px);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        #settingsBtn:hover {
+            transform: rotate(90deg);
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        #settingsBtn svg {
+            width: 24px;
+            height: 24px;
+            fill: #222;
+        }
+
+        /* Painel de Configurações */
+        #configPanel {
+            position: absolute;
+            top: 85px;
+            right: 25px;
+            width: 280px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(35px) saturate(180%);
+            border-radius: 28px;
+            padding: 26px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform: translateX(400px);
+            transition: transform 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+            z-index: 999;
+            color: #111;
+        }
+
+        #configPanel.open {
+            transform: translateX(0);
+        }
+
+        #configPanel h3 {
+            margin: 0 0 20px 0;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 800;
+            text-align: center;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .control-row label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+
+        .control-row input[type="color"] {
+            border: none;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+            border-radius: 50%;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 16px;
+            border: none;
+            font-size: 10px;
+            font-weight: 900;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+        }
+
+        #randomBtn { background: rgba(255,255,255,0.3); color: #000; border: 1px solid rgba(255,255,255,0.2); }
+        #saveBtn { background: #111; color: #fff; }
+
+        #toast {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 40px;
+            font-size: 13px;
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+            z-index: 2000;
+        }
+
+        #timeUi {
+            position: absolute;
+            bottom: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(20px);
+            padding: 18px 45px;
+            border-radius: 60px;
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            z-index: 100;
+        }
+
+        .mode-btn {
+            background: #111;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 35px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .mode-btn.active {
+            background: var(--accent);
+            color: #000;
+        }
+
+        input[type="range"] {
+            appearance: none;
+            width: 140px;
+            height: 4px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none; width: 22px; height: 22px; background: var(--accent); border-radius: 50%; cursor: pointer; border: 4px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast">Preferências Guardadas</div>
+
+    <div id="settingsBtn" title="Configurações de Aparência">
+        <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.81,11.69,4.81,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.5c-1.93,0-3.5-1.57-3.5-3.5 s1.57-3.5,3.5-3.5s3.5,1.57,3.5,3.5S13.93,15.5,12,15.5z"/></svg>
+    </div>
+
+    <div id="configPanel">
+        <h3>Design</h3>
+        <div class="control-row">
+            <label>Semente (Mostrador)</label>
+            <input type="color" id="faceCol" value="#ffffff">
+        </div>
+        <div class="control-row">
+            <label>Marcador</label>
+            <input type="color" id="handCol" value="#ff9900">
+        </div>
+        <div class="control-row">
+            <label>Texto/Pontos</label>
+            <input type="color" id="textCol" value="#111111">
+        </div>
+        <div class="control-row">
+            <label>Caixa</label>
+            <input type="color" id="caseCol" value="#d8d8d8">
+        </div>
+        <div class="control-row">
+            <label>Bezel</label>
+            <input type="color" id="bezelCol" value="#0a0a0a">
+        </div>
+        
+        <div class="btn-group">
+            <button id="randomBtn" class="action-btn">Aleatório</button>
+            <button id="saveBtn" class="action-btn">Guardar</button>
+        </div>
+    </div>
+
+    <div id="canvasContainer">
+        <canvas id="watchCanvas"></canvas>
+    </div>
+
+    <div id="timeUi">
+        <button id="modeBtn" class="mode-btn active">Tempo Real</button>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 8px; font-weight: 900; color: #777; text-transform: uppercase;">Avanço Rápido</label>
+            <input type="range" id="speedRange" min="0" max="100" value="0">
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('watchCanvas');
+        const ctx = canvas.getContext('2d');
+        const STORAGE_KEY = 'diametral_lens_v1';
+
+        function hexToHsl(hex) {
+            let r = parseInt(hex.slice(1, 3), 16) / 255;
+            let g = parseInt(hex.slice(3, 5), 16) / 255;
+            let b = parseInt(hex.slice(5, 7), 16) / 255;
+            let max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, l = (max + min) / 2;
+            if (max === min) h = s = 0;
+            else {
+                let d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
+            }
+            return { h: h * 360, s: s * 100, l: l * 100 };
+        }
+
+        function hslToHex(h, s, l) {
+            l /= 100;
+            const a = s * Math.min(l, 1 - l) / 100;
+            const f = n => {
+                const k = (n + h / 30) % 12;
+                const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, '0');
+            };
+            return `#${f(0)}${f(8)}${f(4)}`;
+        }
+
+        let colors = { face: "#ffffff", hand: "#ff9900", text: "#111111", watch: "#d8d8d8", bezel: "#0a0a0a" };
+        const inputs = {
+            face: document.getElementById('faceCol'),
+            hand: document.getElementById('handCol'),
+            text: document.getElementById('textCol'),
+            watch: document.getElementById('caseCol'),
+            bezel: document.getElementById('bezelCol')
+        };
+
+        function deriveFromFace(faceHex) {
+            const hsl = hexToHsl(faceHex);
+            const textL = hsl.l > 60 ? 12 : 92;
+            const text = hslToHex(hsl.h, hsl.l > 60 ? 15 : 5, textL);
+            const handH = (hsl.h + 180) % 360;
+            const hand = hslToHex(handH, 95, 55);
+            const watchL = hsl.l > 50 ? Math.max(10, hsl.l - 25) : Math.min(90, hsl.l + 25);
+            const watch = hslToHex(hsl.h, Math.max(0, hsl.s - 25), watchL);
+            const bezel = hslToHex(hsl.h, Math.max(0, hsl.s - 20), 10);
+            colors = { face: faceHex, hand, text, watch, bezel };
+            updateUI();
+        }
+
+        function updateUI() {
+            Object.keys(colors).forEach(k => { if(inputs[k]) inputs[k].value = colors[k]; });
+            document.documentElement.style.setProperty('--accent', colors.hand);
+            const bodyHsl = hexToHsl(colors.face);
+            document.body.style.backgroundColor = hslToHex(bodyHsl.h, 15, 90);
+        }
+
+        function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(colors)); toast("Design Guardado no Browser"); }
+        function load() { const saved = localStorage.getItem(STORAGE_KEY); if(saved) { colors = JSON.parse(saved); updateUI(); } }
+        function toast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 2500); }
+
+        inputs.face.oninput = (e) => deriveFromFace(e.target.value);
+        Object.keys(inputs).forEach(k => {
+            if(k !== 'face') inputs[k].oninput = (e) => {
+                colors[k] = e.target.value;
+                if(k === 'hand') document.documentElement.style.setProperty('--accent', colors.hand);
+            };
+        });
+
+        document.getElementById('randomBtn').onclick = () => deriveFromFace('#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0'));
+        document.getElementById('saveBtn').onclick = save;
+        document.getElementById('settingsBtn').onclick = () => document.getElementById('configPanel').classList.toggle('open');
+
+        let isRealTime = true, speedMult = 0, virtualOffset = 0, lastTime = 0;
+
+        function resize() {
+            const size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.7, 500);
+            canvas.width = size; canvas.height = size;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        document.getElementById('modeBtn').onclick = (e) => {
+            isRealTime = !isRealTime;
+            e.target.classList.toggle('active', isRealTime);
+            e.target.innerText = isRealTime ? "Tempo Real" : "Modo Demo";
+        };
+
+        document.getElementById('speedRange').oninput = (e) => {
+            speedMult = parseFloat(e.target.value);
+            if(speedMult > 0 && isRealTime) {
+                isRealTime = false;
+                document.getElementById('modeBtn').classList.remove('active');
+                document.getElementById('modeBtn').innerText = "Modo Demo";
+            }
+        };
+
+        function draw(timestamp) {
+            const dt = (timestamp - lastTime) / 1000;
+            lastTime = timestamp;
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const r = canvas.width * 0.44;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = colors.watch;
+            ctx.beginPath(); ctx.roundRect(cx - r*1.1, cy - r*1.35, r*2.2, r*2.7, 25); ctx.fill();
+            ctx.fillStyle = "#151515"; ctx.fillRect(cx - r*0.75, 0, r*1.5, canvas.height);
+            ctx.beginPath(); ctx.arc(cx, cy, r + 16, 0, Math.PI * 2); ctx.fillStyle = colors.bezel; ctx.fill();
+
+            ctx.save();
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+            ctx.fillStyle = colors.face; ctx.fill();
+
+            let t;
+            const now = new Date();
+            if (isRealTime) {
+                t = (now.getHours() % 12) * 3600 + now.getMinutes() * 60 + now.getSeconds() + now.getMilliseconds() / 1000;
+            } else {
+                virtualOffset += dt * speedMult * 45;
+                t = (now.getHours() % 12) * 3600 + now.getMinutes() * 60 + now.getSeconds() + virtualOffset;
+            }
+
+            const minAngle = ((t % 3600) / 3600) * Math.PI * 2 - Math.PI / 2;
+            const pivotAngle = minAngle + Math.PI;
+            const pivotX = cx + Math.cos(pivotAngle) * r;
+            const pivotY = cy + Math.sin(pivotAngle) * r;
+
+            const hourDecimal = (t % 43200) / 3600;
+            const numberRadius = r * 1.60;
+            const markerRadius = numberRadius - 48; 
+            const phi = minAngle - ((hourDecimal / 12) * Math.PI * 2 - Math.PI / 2);
+
+            ctx.save();
+            ctx.translate(pivotX, pivotY);
+            ctx.rotate(phi);
+            ctx.fillStyle = colors.text;
+
+            for (let i = 1; i <= 12; i++) {
+                const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+                const nx = Math.cos(angle) * numberRadius;
+                const ny = Math.sin(angle) * numberRadius;
+
+                ctx.save();
+                ctx.translate(nx, ny);
+                ctx.rotate(angle + Math.PI / 2);
+                ctx.font = `300 ${r * 0.22}px "Helvetica Neue", Arial`;
+                ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                ctx.fillText(i.toString(), 0, 0);
+                ctx.restore();
+
+                // Ponto da Hora Principal
+                ctx.beginPath();
+                ctx.arc(Math.cos(angle) * markerRadius, Math.sin(angle) * markerRadius, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Divisões: Pontos de 10 min e Pontos de 5 min (Intermédios)
+                // Existem 12 segmentos de 5 minutos numa hora
+                const divisions = 12;
+                for (let j = 1; j < divisions; j++) {
+                    const sa = angle + (j / (12 * divisions)) * Math.PI * 2;
+                    const dotX = Math.cos(sa) * markerRadius;
+                    const dotY = Math.sin(sa) * markerRadius;
+                    
+                    ctx.beginPath();
+                    if (j % 2 === 0) {
+                        // Divisão de 10 minutos (Ponto Menor original)
+                        ctx.arc(dotX, dotY, 1.2, 0, Math.PI * 2);
+                    } else {
+                        // Divisão de 5 minutos (Novo Ponto intermédio)
+                        ctx.arc(dotX, dotY, 0.7, 0, Math.PI * 2);
+                    }
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(cx, cy); ctx.rotate(minAngle + Math.PI / 2);
+            ctx.fillStyle = colors.hand; ctx.fillRect(-2, -r, 4, r * 2);
+            ctx.restore();
+
+            ctx.restore(); // Fim clip
+
+            // OVERLAY LENTE
+            const edgeShadow = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r);
+            edgeShadow.addColorStop(0, "rgba(0,0,0,0)");
+            edgeShadow.addColorStop(1, "rgba(0,0,0,0.25)");
+            ctx.fillStyle = edgeShadow;
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+            const domeGradient = ctx.createRadialGradient(cx - r*0.3, cy - r*0.3, 0, cx, cy, r * 1.5);
+            domeGradient.addColorStop(0, "rgba(255,255,255,0.15)");
+            domeGradient.addColorStop(1, "rgba(0,0,0,0.08)");
+            ctx.fillStyle = domeGradient;
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+
+            const shine = ctx.createRadialGradient(cx - r*0.4, cy - r*0.4, r*0.05, cx - r*0.4, cy - r*0.4, r*0.5);
+            shine.addColorStop(0, "rgba(255,255,255,0.3)");
+            shine.addColorStop(1, "rgba(255,255,255,0)");
+            ctx.fillStyle = shine;
+            ctx.save();
+            ctx.beginPath(); ctx.ellipse(cx - r*0.35, cy - r*0.35, r*0.4, r*0.2, Math.PI * 0.75, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+
+            requestAnimationFrame(draw);
+        }
+
+        load();
+        requestAnimationFrame(draw);
+    </script>
+</body>
+</html>

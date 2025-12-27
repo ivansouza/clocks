@@ -2,8 +2,8 @@
 <html lang="pt-pt">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diametral Trio - Divisões de 5 Minutos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Diametral Trio - Ajuste Responsivo</title>
     <style>
         :root {
             --panel-bg: rgba(255, 255, 255, 0.15);
@@ -17,35 +17,54 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             background-color: #e5e5e7;
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             overflow: hidden;
             transition: background-color 0.8s ease;
         }
 
+        /* Content wrapper for better centering */
+        #appWrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
         #canvasContainer {
             position: relative;
             background: transparent;
             border-radius: 50%;
-            box-shadow: 0 70px 150px rgba(0,0,0,0.25);
+            box-shadow: 0 40px 100px rgba(0,0,0,0.2);
+            max-width: 95vw;
+            max-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         canvas {
             display: block;
             border-radius: 50%;
+            width: 100%;
+            height: auto;
         }
 
         /* Botão de Definições */
         #settingsBtn {
             position: absolute;
-            top: 25px;
-            right: 25px;
-            width: 46px;
-            height: 46px;
+            top: 20px;
+            right: 20px;
+            width: 42px;
+            height: 42px;
             background: rgba(255, 255, 255, 0.3);
             backdrop-filter: blur(15px);
-            border-radius: 14px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -61,25 +80,25 @@
         }
 
         #settingsBtn svg {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
             fill: #222;
         }
 
         /* Painel de Configurações */
         #configPanel {
             position: absolute;
-            top: 85px;
-            right: 25px;
-            width: 280px;
+            top: 75px;
+            right: 20px;
+            width: 250px;
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(35px) saturate(180%);
-            border-radius: 28px;
-            padding: 26px;
+            border-radius: 24px;
+            padding: 20px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.15);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            transform: translateX(400px);
-            transition: transform 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+            transform: translateX(350px);
+            transition: transform 0.6s cubic-bezier(0.19, 1, 0.22, 1);
             z-index: 999;
             color: #111;
         }
@@ -89,8 +108,8 @@
         }
 
         #configPanel h3 {
-            margin: 0 0 20px 0;
-            font-size: 14px;
+            margin: 0 0 15px 0;
+            font-size: 13px;
             text-transform: uppercase;
             letter-spacing: 2px;
             font-weight: 800;
@@ -101,11 +120,11 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .control-row label {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
             opacity: 0.8;
@@ -113,8 +132,8 @@
 
         .control-row input[type="color"] {
             border: none;
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             cursor: pointer;
             background: none;
             padding: 0;
@@ -123,16 +142,16 @@
 
         .btn-group {
             display: flex;
-            gap: 12px;
-            margin-top: 25px;
+            gap: 10px;
+            margin-top: 20px;
         }
 
         .action-btn {
             flex: 1;
-            padding: 14px;
-            border-radius: 16px;
+            padding: 10px;
+            border-radius: 12px;
             border: none;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 900;
             text-transform: uppercase;
             cursor: pointer;
@@ -145,31 +164,31 @@
 
         #toast {
             position: fixed;
-            bottom: 40px;
+            bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             background: rgba(0,0,0,0.85);
             color: white;
-            padding: 12px 30px;
-            border-radius: 40px;
-            font-size: 13px;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-size: 12px;
             opacity: 0;
             transition: opacity 0.4s;
             pointer-events: none;
             z-index: 2000;
         }
 
+        /* UI de Tempo Inferior */
         #timeUi {
-            position: absolute;
-            bottom: 40px;
+            margin-top: 30px;
             background: rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(20px);
-            padding: 18px 45px;
-            border-radius: 60px;
+            padding: 14px 30px;
+            border-radius: 50px;
             display: flex;
-            gap: 30px;
+            gap: 20px;
             align-items: center;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.06);
             border: 1px solid rgba(255, 255, 255, 0.3);
             z-index: 100;
         }
@@ -178,10 +197,10 @@
             background: #111;
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 35px;
+            padding: 10px 18px;
+            border-radius: 25px;
             cursor: pointer;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: bold;
             text-transform: uppercase;
         }
@@ -193,15 +212,25 @@
 
         input[type="range"] {
             appearance: none;
-            width: 140px;
-            height: 4px;
+            width: 100px;
+            height: 3px;
             background: rgba(0,0,0,0.1);
             border-radius: 2px;
             outline: none;
         }
 
         input[type="range"]::-webkit-slider-thumb {
-            appearance: none; width: 22px; height: 22px; background: var(--accent); border-radius: 50%; cursor: pointer; border: 4px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            appearance: none; width: 16px; height: 16px; background: var(--accent); border-radius: 50%; cursor: pointer; border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 600px) {
+            #timeUi {
+                padding: 12px 20px;
+                gap: 15px;
+            }
+            input[type="range"] {
+                width: 80px;
+            }
         }
     </style>
 </head>
@@ -214,9 +243,9 @@
     </div>
 
     <div id="configPanel">
-        <h3>Design</h3>
+        <h3>Aparência</h3>
         <div class="control-row">
-            <label>Semente (Mostrador)</label>
+            <label>Fundo (Semente)</label>
             <input type="color" id="faceCol" value="#ffffff">
         </div>
         <div class="control-row">
@@ -242,23 +271,26 @@
         </div>
     </div>
 
-    <div id="canvasContainer">
-        <canvas id="watchCanvas"></canvas>
-    </div>
+    <div id="appWrapper">
+        <div id="canvasContainer">
+            <canvas id="watchCanvas"></canvas>
+        </div>
 
-    <div id="timeUi">
-        <button id="modeBtn" class="mode-btn active">Tempo Real</button>
-        <div style="display: flex; flex-direction: column; gap: 4px;">
-            <label style="font-size: 8px; font-weight: 900; color: #777; text-transform: uppercase;">Avanço Rápido</label>
-            <input type="range" id="speedRange" min="0" max="100" value="0">
+        <div id="timeUi">
+            <button id="modeBtn" class="mode-btn active">Tempo Real</button>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+                <label style="font-size: 8px; font-weight: 900; color: #777; text-transform: uppercase;">Avanço Rápido</label>
+                <input type="range" id="speedRange" min="0" max="100" value="0">
+            </div>
         </div>
     </div>
 
     <script>
         const canvas = document.getElementById('watchCanvas');
         const ctx = canvas.getContext('2d');
-        const STORAGE_KEY = 'diametral_lens_v1';
+        const STORAGE_KEY = 'diametral_lens_v_final';
 
+        // --- UTILITÁRIOS DE COR ---
         function hexToHsl(hex) {
             let r = parseInt(hex.slice(1, 3), 16) / 255;
             let g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -308,6 +340,7 @@
             const watchL = hsl.l > 50 ? Math.max(10, hsl.l - 25) : Math.min(90, hsl.l + 25);
             const watch = hslToHex(hsl.h, Math.max(0, hsl.s - 25), watchL);
             const bezel = hslToHex(hsl.h, Math.max(0, hsl.s - 20), 10);
+
             colors = { face: faceHex, hand, text, watch, bezel };
             updateUI();
         }
@@ -319,10 +352,21 @@
             document.body.style.backgroundColor = hslToHex(bodyHsl.h, 15, 90);
         }
 
-        function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(colors)); toast("Design Guardado no Browser"); }
-        function load() { const saved = localStorage.getItem(STORAGE_KEY); if(saved) { colors = JSON.parse(saved); updateUI(); } }
-        function toast(msg) { const t = document.getElementById('toast'); t.innerText = msg; t.style.opacity = 1; setTimeout(() => t.style.opacity = 0, 2500); }
+        function save() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(colors));
+            toast("Design Guardado");
+        }
+        function load() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if(saved) { colors = JSON.parse(saved); updateUI(); }
+        }
+        function toast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg; t.style.opacity = 1;
+            setTimeout(() => t.style.opacity = 0, 2500);
+        }
 
+        // --- EVENTOS ---
         inputs.face.oninput = (e) => deriveFromFace(e.target.value);
         Object.keys(inputs).forEach(k => {
             if(k !== 'face') inputs[k].oninput = (e) => {
@@ -335,12 +379,29 @@
         document.getElementById('saveBtn').onclick = save;
         document.getElementById('settingsBtn').onclick = () => document.getElementById('configPanel').classList.toggle('open');
 
+        // --- RENDERIZAÇÃO CANVAS ---
         let isRealTime = true, speedMult = 0, virtualOffset = 0, lastTime = 0;
 
         function resize() {
-            const size = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.7, 500);
-            canvas.width = size; canvas.height = size;
+            // A lógica de redimensionamento agora garante que o relógio caiba em qualquer ecrã
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            // Define o tamanho baseando-se na largura horizontal, mas limitando pela altura para não overflow
+            const size = Math.min(width * 0.85, height * 0.65, 550);
+            
+            // Garantimos que o canvas tenha resolução suficiente (retina display ready)
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = size * dpr;
+            canvas.height = size * dpr;
+            
+            // CSS scale
+            canvas.style.width = size + 'px';
+            canvas.style.height = size + 'px';
+            
+            ctx.scale(dpr, dpr);
         }
+        
         window.addEventListener('resize', resize);
         resize();
 
@@ -362,17 +423,30 @@
         function draw(timestamp) {
             const dt = (timestamp - lastTime) / 1000;
             lastTime = timestamp;
-            const cx = canvas.width / 2;
-            const cy = canvas.height / 2;
-            const r = canvas.width * 0.44;
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Usamos o tamanho atual do canvas (após o CSS scale)
+            const size = canvas.getBoundingClientRect().width;
+            const cx = size / 2;
+            const cy = size / 2;
+            const r = size * 0.44;
 
+            ctx.clearRect(0, 0, size, size);
+
+            // 1. Caixa
             ctx.fillStyle = colors.watch;
-            ctx.beginPath(); ctx.roundRect(cx - r*1.1, cy - r*1.35, r*2.2, r*2.7, 25); ctx.fill();
-            ctx.fillStyle = "#151515"; ctx.fillRect(cx - r*0.75, 0, r*1.5, canvas.height);
-            ctx.beginPath(); ctx.arc(cx, cy, r + 16, 0, Math.PI * 2); ctx.fillStyle = colors.bezel; ctx.fill();
+            ctx.beginPath();
+            ctx.roundRect(cx - r*1.1, cy - r*1.35, r*2.2, r*2.7, 25);
+            ctx.fill();
 
+            // 2. Pulseira
+            ctx.fillStyle = "#151515";
+            ctx.fillRect(cx - r*0.75, 0, r*1.5, size);
+
+            // 3. Bezel
+            ctx.beginPath(); ctx.arc(cx, cy, r + 16, 0, Math.PI * 2);
+            ctx.fillStyle = colors.bezel; ctx.fill();
+
+            // 4. Face (Clip)
             ctx.save();
             ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
             ctx.fillStyle = colors.face; ctx.fill();
@@ -396,6 +470,7 @@
             const markerRadius = numberRadius - 48; 
             const phi = minAngle - ((hourDecimal / 12) * Math.PI * 2 - Math.PI / 2);
 
+            // Disco de Números e Pontos
             ctx.save();
             ctx.translate(pivotX, pivotY);
             ctx.rotate(phi);
@@ -406,6 +481,7 @@
                 const nx = Math.cos(angle) * numberRadius;
                 const ny = Math.sin(angle) * numberRadius;
 
+                // Numeral Perpendicular
                 ctx.save();
                 ctx.translate(nx, ny);
                 ctx.rotate(angle + Math.PI / 2);
@@ -419,8 +495,7 @@
                 ctx.arc(Math.cos(angle) * markerRadius, Math.sin(angle) * markerRadius, 3.5, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Divisões: Pontos de 10 min e Pontos de 5 min (Intermédios)
-                // Existem 12 segmentos de 5 minutos numa hora
+                // Divisões: Pontos de 10 min e Pontos de 5 min
                 const divisions = 12;
                 for (let j = 1; j < divisions; j++) {
                     const sa = angle + (j / (12 * divisions)) * Math.PI * 2;
@@ -429,10 +504,8 @@
                     
                     ctx.beginPath();
                     if (j % 2 === 0) {
-                        // Divisão de 10 minutos (Ponto Menor original)
                         ctx.arc(dotX, dotY, 1.2, 0, Math.PI * 2);
                     } else {
-                        // Divisão de 5 minutos (Novo Ponto intermédio)
                         ctx.arc(dotX, dotY, 0.7, 0, Math.PI * 2);
                     }
                     ctx.fill();
@@ -440,14 +513,15 @@
             }
             ctx.restore();
 
+            // Marcador Diametral
             ctx.save();
             ctx.translate(cx, cy); ctx.rotate(minAngle + Math.PI / 2);
             ctx.fillStyle = colors.hand; ctx.fillRect(-2, -r, 4, r * 2);
             ctx.restore();
 
-            ctx.restore(); // Fim clip
+            ctx.restore(); // Fim clip mostrador
 
-            // OVERLAY LENTE
+            // --- LENTE DE AUMENTO (OVERLAY) ---
             const edgeShadow = ctx.createRadialGradient(cx, cy, r * 0.85, cx, cy, r);
             edgeShadow.addColorStop(0, "rgba(0,0,0,0)");
             edgeShadow.addColorStop(1, "rgba(0,0,0,0.25)");
@@ -465,7 +539,9 @@
             shine.addColorStop(1, "rgba(255,255,255,0)");
             ctx.fillStyle = shine;
             ctx.save();
-            ctx.beginPath(); ctx.ellipse(cx - r*0.35, cy - r*0.35, r*0.4, r*0.2, Math.PI * 0.75, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(cx - r*0.35, cy - r*0.35, r*0.4, r*0.2, Math.PI * 0.75, 0, Math.PI * 2);
+            ctx.fill();
             ctx.restore();
 
             requestAnimationFrame(draw);
@@ -476,4 +552,3 @@
     </script>
 </body>
 </html>
-

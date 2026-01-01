@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relógio Flip 3D - Sincronização Total de Fontes</title>
+    <title>Relógio Flip 3D - Persistência Local</title>
     
     <!-- Importação de Fontes do Google -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@900&family=JetBrains+Mono:wght@800&family=Bebas+Neue&family=Montserrat:wght@900&family=Inter:wght@900&family=Oswald:wght@700&family=Ubuntu:wght@700&family=Playfair+Display:wght@900&display=swap" rel="stylesheet">
@@ -66,12 +66,31 @@
             z-index: 99;
         }
         #settings-panel.active { display: block; animation: fadeIn 0.2s ease-out; }
+        
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95) translateY(-10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
         .control-group { margin-bottom: 18px; }
         .control-group label { display: block; font-size: 9px; text-transform: uppercase; margin-bottom: 6px; opacity: 0.5; font-weight: 700; letter-spacing: 1px; }
         .control-group input, .control-group select { width: 100%; cursor: pointer; background: #1a1a1a; color: white; border: 1px solid #333; border-radius: 6px; padding: 8px; font-size: 11px; outline: none; }
         
+        #save-btn {
+            width: 100%;
+            padding: 12px;
+            background: #0066ff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 11px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        #save-btn:hover { background: #0088ff; }
+        #save-btn:active { transform: scale(0.98); }
+
         .panel-title { font-size: 13px; font-weight: 800; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; letter-spacing: 2px; text-align: center; color: #0096ff; }
         
         #settings-panel::-webkit-scrollbar { width: 4px; }
@@ -89,7 +108,7 @@
         <div class="control-group">
             <label>Tipo de Fonte</label>
             <select id="font-family">
-                <option value="'Inter', sans-serif" selected>Inter (Clássica)</option>
+                <option value="'Inter', sans-serif">Inter (Clássica)</option>
                 <option value="'Bebas Neue', cursive">Bebas Neue (Display)</option>
                 <option value="'Roboto', sans-serif">Roboto</option>
                 <option value="'JetBrains Mono', monospace">JetBrains Mono (Tech)</option>
@@ -136,9 +155,11 @@
             <label>Exposição de Luz</label>
             <input type="range" id="light-intensity" min="0" max="3" step="0.1" value="1.0">
         </div>
+
+        <button id="save-btn">Gravar Configuração</button>
     </div>
 
-    <div id="ui-bottom">Sincronização Ativa • Motor Flip 3D</div>
+    <div id="ui-bottom">Estado Guardado Localmente • Motor Flip 3D</div>
     <div id="canvas-container"></div>
 
     <script id="vertexShader" type="x-shader/x-vertex">
@@ -188,6 +209,7 @@
         let scene, camera, renderer, controls, dirLight, ambientLight, clockCase;
         const clock = new THREE.Clock();
         const flaps = [];
+        const STORAGE_KEY = "flip_clock_config_v2";
         
         const params = {
             glowColor: new THREE.Color(0x0066ff),
@@ -198,7 +220,9 @@
             flipSpeed: 4.5,
             flipProjection: 0.10,
             lightIntensity: 1.0,
-            ambientIntensity: 0.25
+            ambientIntensity: 0.25,
+            cameraPos: { x: 0, y: 1, z: 11 },
+            cameraTarget: { x: 0, y: 0, z: 0 }
         };
 
         class FlipUnit {
@@ -265,7 +289,6 @@
 
             addLabel(text) {
                 if (this.labelMesh) this.group.remove(this.labelMesh);
-                
                 const canvas = document.createElement('canvas');
                 canvas.width = 256; canvas.height = 64;
                 const ctx = canvas.getContext('2d');
@@ -273,7 +296,6 @@
                 ctx.font = `bold 28px ${params.fontFamily}`;
                 ctx.textAlign = 'center';
                 ctx.fillText(text.toUpperCase(), 128, 42);
-                
                 const tex = new THREE.CanvasTexture(canvas);
                 const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.4), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
                 mesh.position.set(0, -2.2, 0.1);
@@ -285,46 +307,33 @@
                 const { ctx, isTop, texture } = mesh.userData;
                 const safeVal = Math.max(0, val);
                 const str = safeVal < 10 ? '0' + safeVal : '' + safeVal;
-                
                 ctx.fillStyle = '#000000'; 
                 ctx.fillRect(0, 0, 512, 512);
-
                 let fontSize = 440; 
-                const maxTextWidth = 480; 
-                
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillStyle = params.fontColor; 
-
-                // Forçar fonte a ser aplicada
                 ctx.font = `900 ${fontSize}px ${params.fontFamily}`;
                 let metrics = ctx.measureText(str);
-                
-                if (metrics.width > maxTextWidth) {
-                    fontSize = Math.floor(fontSize * (maxTextWidth / metrics.width));
+                if (metrics.width > 480) {
+                    fontSize = Math.floor(fontSize * (480 / metrics.width));
                     ctx.font = `900 ${fontSize}px ${params.fontFamily}`;
                 }
-                
                 const drawY = isTop ? 512 : 0;
                 ctx.fillText(str, 256, drawY + params.yOffset);
-                
                 ctx.fillStyle = 'rgba(0,0,0,0.7)';
                 if (isTop) ctx.fillRect(0, 508, 512, 4);
                 else ctx.fillRect(0, 0, 512, 4);
-
                 texture.needsUpdate = true;
             }
 
             refreshAllTextures() {
                 const cur = Math.max(0, this.currentVal);
                 const nxt = this.animating ? this.targetVal : (cur + 1) % this.limit;
-                
-                // Redesenha vigorosamente as 4 placas
                 this.updateTexture(this.topBack, nxt);
                 this.updateTexture(this.botBack, cur);
                 this.updateTexture(this.flipperFront, cur);
                 this.updateTexture(this.flipperBack, nxt);
-                
                 this.addLabel(this.labelStr);
             }
 
@@ -345,13 +354,11 @@
                     this.animating = false;
                     this.flipper.rotation.x = 0;
                     this.flipper.position.z = 0;
-                    // Ao terminar o flip, atualizamos a base estática para o valor final
                     this.updateTexture(this.botBack, this.targetVal);
                 }
                 const eased = Math.pow(this.progress, 3);
                 this.flipper.rotation.x = eased * Math.PI;
                 this.flipper.position.z = Math.sin(this.progress * Math.PI) * params.flipProjection;
-                
                 const pulse = 0.2 + Math.sin(this.progress * Math.PI) * 0.4;
                 this.flipperFront.material.uniforms.shadowIntensity.value = 0.15 + pulse;
                 this.flipperBack.material.uniforms.shadowIntensity.value = 0.15 + pulse;
@@ -364,15 +371,61 @@
             }
         }
 
-        async function globalRefresh() {
-            // Sincronização definitiva com o motor de fontes
-            await document.fonts.ready;
-            // Carregar explicitamente a fonte selecionada
-            try {
-                await document.fonts.load(`900 20px ${params.fontFamily}`);
-            } catch(e) {}
+        function saveConfig() {
+            const config = {
+                glowColor: '#' + params.glowColor.getHexString(),
+                fontColor: params.fontColor,
+                boxColor: params.boxColor,
+                fontFamily: params.fontFamily,
+                yOffset: params.yOffset,
+                flipSpeed: params.flipSpeed,
+                flipProjection: params.flipProjection,
+                lightIntensity: params.lightIntensity,
+                cameraPos: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+                cameraTarget: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
             
-            // Forçar redesenho em todas as unidades (Horas, Minutos, Segundos)
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.innerText = "Gravado!";
+            saveBtn.style.background = "#00cc66";
+            setTimeout(() => {
+                saveBtn.innerText = "Gravar Configuração";
+                saveBtn.style.background = "#0066ff";
+            }, 2000);
+        }
+
+        function loadConfig() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (!saved) return;
+            try {
+                const data = JSON.parse(saved);
+                params.glowColor.set(data.glowColor);
+                params.fontColor = data.fontColor;
+                params.boxColor = data.boxColor;
+                params.fontFamily = data.fontFamily;
+                params.yOffset = data.yOffset;
+                params.flipSpeed = data.flipSpeed;
+                params.flipProjection = data.flipProjection;
+                params.lightIntensity = data.lightIntensity;
+                params.cameraPos = data.cameraPos;
+                params.cameraTarget = data.cameraTarget;
+
+                // Atualizar UI
+                document.getElementById('glow-color').value = data.glowColor;
+                document.getElementById('font-color').value = data.fontColor;
+                document.getElementById('box-color').value = data.boxColor;
+                document.getElementById('font-family').value = data.fontFamily;
+                document.getElementById('y-offset').value = data.yOffset;
+                document.getElementById('flip-projection').value = data.flipProjection;
+                document.getElementById('flip-speed').value = data.flipSpeed;
+                document.getElementById('light-intensity').value = data.lightIntensity;
+            } catch (e) { console.error("Erro ao carregar config", e); }
+        }
+
+        async function globalRefresh() {
+            await document.fonts.ready;
+            try { await document.fonts.load(`900 20px ${params.fontFamily}`); } catch(e) {}
             requestAnimationFrame(() => {
                 flaps.forEach(f => f.refreshAllTextures());
             });
@@ -381,53 +434,33 @@
         function initUI() {
             const btn = document.getElementById('settings-btn');
             const panel = document.getElementById('settings-panel');
-            
-            btn.onclick = (e) => {
-                e.stopPropagation();
-                panel.classList.toggle('active');
-            };
+            btn.onclick = (e) => { e.stopPropagation(); panel.classList.toggle('active'); };
 
-            document.getElementById('font-family').onchange = (e) => {
-                params.fontFamily = e.target.value;
-                globalRefresh();
-            };
-
-            document.getElementById('y-offset').oninput = (e) => {
-                params.yOffset = parseInt(e.target.value);
-                // Atualização instantânea sem await
-                flaps.forEach(f => f.refreshAllTextures());
-            };
-
-            document.getElementById('font-color').oninput = (e) => {
-                params.fontColor = e.target.value;
-                globalRefresh();
-            };
-
-            document.getElementById('box-color').oninput = (e) => {
-                params.boxColor = e.target.value;
-                clockCase.material.color.set(params.boxColor);
-            };
-
+            document.getElementById('font-family').onchange = (e) => { params.fontFamily = e.target.value; globalRefresh(); };
+            document.getElementById('y-offset').oninput = (e) => { params.yOffset = parseInt(e.target.value); flaps.forEach(f => f.refreshAllTextures()); };
+            document.getElementById('font-color').oninput = (e) => { params.fontColor = e.target.value; globalRefresh(); };
+            document.getElementById('box-color').oninput = (e) => { params.boxColor = e.target.value; clockCase.material.color.set(params.boxColor); };
             document.getElementById('glow-color').oninput = (e) => {
                 params.glowColor.set(e.target.value);
                 flaps.forEach(f => f.updateGlowColor(params.glowColor));
-                const uiBot = document.getElementById('ui-bottom');
-                uiBot.style.color = e.target.value + '88';
-                uiBot.style.textShadow = `0 0 12px ${e.target.value}`;
+                document.getElementById('ui-bottom').style.color = e.target.value + '88';
+                document.getElementById('ui-bottom').style.textShadow = `0 0 12px ${e.target.value}`;
             };
-
             document.getElementById('flip-projection').oninput = (e) => params.flipProjection = parseFloat(e.target.value);
             document.getElementById('flip-speed').oninput = (e) => params.flipSpeed = parseFloat(e.target.value);
             document.getElementById('light-intensity').oninput = (e) => dirLight.intensity = parseFloat(e.target.value);
+            document.getElementById('save-btn').onclick = saveConfig;
 
             window.onclick = () => panel.classList.remove('active');
             panel.onclick = (e) => e.stopPropagation();
         }
 
         function init() {
+            loadConfig(); // Carrega antes de criar a cena
+
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 1.0, 11);
+            camera.position.set(params.cameraPos.x, params.cameraPos.y, params.cameraPos.z);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -435,6 +468,7 @@
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(params.cameraTarget.x, params.cameraTarget.y, params.cameraTarget.z);
             controls.enableDamping = true;
             controls.dampingFactor = 0.08;
 
@@ -444,7 +478,6 @@
             dirLight.position.set(5, 10, 15);
             scene.add(dirLight);
 
-            // Iniciar com valores negativos para forçar o primeiro flip
             flaps.push(new FlipUnit(-2.6, "Horas", 24));
             flaps.push(new FlipUnit(0, "Minutos", 60));
             flaps.push(new FlipUnit(2.6, "Segundos", 60));
@@ -457,6 +490,7 @@
             scene.add(clockCase);
 
             initUI();
+            globalRefresh();
             window.addEventListener('resize', onWindowResize, false);
             animate();
         }
@@ -474,18 +508,12 @@
             const h = now.getHours();
             const m = now.getMinutes();
             const s = now.getSeconds();
-
             const vals = [h, m, s];
             const nexts = [(h+1)%24, (m+1)%60, (s+1)%60];
-            
             flaps.forEach((f, i) => {
-                // Sincronização rigorosa do tempo
-                if (f.currentVal !== vals[i] && !f.animating) {
-                    f.setValues(vals[i], nexts[i]);
-                }
+                if (f.currentVal !== vals[i] && !f.animating) f.setValues(vals[i], nexts[i]);
                 f.update(dt);
             });
-            
             controls.update();
             renderer.render(scene, camera);
         }

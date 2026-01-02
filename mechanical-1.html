@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gear Lab 3D Pro - Calibre de Precisão</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background: #010102; font-family: 'Inter', system-ui, sans-serif; color: white; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        .ui-overlay { pointer-events: none; position: fixed; inset: 0; }
+        .ui-overlay * { pointer-events: auto; }
+        
+        .glass-panel {
+            background: rgba(5, 5, 10, 0.95);
+            backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .panel-slide {
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateX(100%);
+        }
+        .panel-slide.open { transform: translateX(0); }
+
+        input[type=range] { accent-color: #3b82f6; height: 4px; width: 100%; cursor: pointer; background: #333; border-radius: 4px; appearance: none; }
+        
+        .clock-display {
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 4px;
+            text-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
+            color: #ffffff;
+        }
+        
+        .badge {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 800;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="mainCanvas"></canvas>
+
+    <div class="ui-overlay">
+        <div class="fixed top-8 left-1/2 -translate-x-1/2 text-center pointer-events-none">
+            <div id="digitalClock" class="clock-display text-5xl font-black mb-1">00:00:00</div>
+            <div class="flex items-center justify-center gap-3">
+                <span class="badge text-blue-400">CALIBRE DE METAL V7.0</span>
+                <div class="text-[10px] uppercase tracking-[0.6em] text-blue-400/60 font-bold">Acabamento em Metal Anodizado</div>
+            </div>
+        </div>
+
+        <button id="btnMenu" class="fixed top-6 right-6 p-4 glass-panel rounded-3xl z-50 hover:bg-blue-600/20 transition-all active:scale-95 shadow-2xl">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+
+        <div id="sidePanel" class="panel-slide fixed top-0 right-0 h-full w-80 glass-panel p-8 shadow-2xl overflow-y-auto">
+            <h2 class="text-2xl font-black mb-1 text-white tracking-tight italic text-blue-500 underline decoration-2 underline-offset-8 mb-6 uppercase">Simulação</h2>
+            
+            <div class="space-y-6">
+                <section class="stat-card p-4 space-y-4 bg-white/5 rounded-xl border border-white/10">
+                    <div>
+                        <div class="flex justify-between text-[10px] font-black uppercase text-gray-500 mb-2"><span>Aceleração</span></div>
+                        <input type="range" id="inputSpeed" min="1" max="3600" step="1" value="1200">
+                        <div class="flex justify-between text-xs mt-2 font-mono"><span id="txtSpeed" class="text-blue-400">1200.0x</span></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btnRealTime" class="bg-blue-600 text-[9px] font-bold py-2 rounded-lg transition-colors uppercase">Tempo Real</button>
+                        <button id="btnSimulate" class="bg-white/5 text-[9px] font-bold py-2 rounded-lg border border-white/10 transition-colors uppercase">Simulação</button>
+                    </div>
+                </section>
+
+                <div class="space-y-3 text-[10px]">
+                    <div class="p-3 bg-white/5 border-l-4 border-blue-400 rounded-r-lg">
+                        <div class="font-bold text-blue-400 uppercase">Material de Metal</div>
+                        <div class="text-gray-500 mt-1 italic">Textura de metal polido com 100% de metalicidade.</div>
+                    </div>
+                    <div class="p-3 bg-red-500/10 border-l-4 border-red-500 rounded-r-lg">
+                        <div class="font-bold text-red-400 uppercase">Segundos</div>
+                    </div>
+                    <div class="p-3 bg-green-500/10 border-l-4 border-green-500 rounded-r-lg">
+                        <div class="font-bold text-green-400 uppercase">Minutos</div>
+                    </div>
+                    <div class="p-3 bg-blue-500/10 border-l-4 border-blue-500 rounded-r-lg">
+                        <div class="font-bold text-blue-400 uppercase">Horas</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        let scene, camera, renderer, controls;
+        
+        const module = 0.35; 
+        const config = {
+            speed: 1200.0,
+            thickness: 1.2, 
+            mode: 'real' 
+        };
+
+        const PTR_FRONT_Z = 16.0; 
+        const GLASS_Z = 20.0;
+
+        const gearsData = [
+            { id: 'sec', teeth: 10, color: 0xff4444, axis: 0, z: 0.0, hasPtr: true, ptrW: 0.15 },     
+            { id: 'red1a', teeth: 60, color: 0x888888, axis: 1, z: 0.0, hasPtr: false },   
+            { id: 'red1b', teeth: 10, color: 0xaaaaaa, axis: 1, z: 4.0, hasPtr: false }, 
+            { id: 'min', teeth: 100, color: 0x44ff44, axis: 2, z: 4.0, hasPtr: true, ptrW: 0.20 },  
+            { id: 'red2a', teeth: 40, color: 0xaaaaaa, axis: 2, z: 0.0, hasPtr: false },   
+            { id: 'red2b', teeth: 80, color: 0x888888, axis: 3, z: 0.0, hasPtr: false },   
+            { id: 'red2c', teeth: 20, color: 0xaaaaaa, axis: 3, z: 8.0, hasPtr: false }, 
+            { id: 'hor', teeth: 120, color: 0x4444ff, axis: 4, z: 8.0, hasPtr: true, ptrW: 0.35 }     
+        ];
+
+        let simTime = new Date();
+        const axisX = [];
+        const axisY = [];
+
+        function init() {
+            const canvas = document.getElementById('mainCanvas');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x010102); 
+            
+            // ILUMINAÇÃO RECALIBRADA PARA METAL
+            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1.8);
+            mainLight.position.set(50, 100, 50);
+            scene.add(mainLight);
+
+            const rimLight = new THREE.PointLight(0xffffff, 1.5, 500);
+            rimLight.position.set(-80, 50, 100);
+            scene.add(rimLight);
+
+            const blueLight = new THREE.PointLight(0x3b82f6, 1.0, 300);
+            blueLight.position.set(60, -40, 50);
+            scene.add(blueLight);
+
+            camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 10000);
+            camera.position.set(0, 0, 300);
+
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            setupCompactLayout();
+            rebuildCalibre();
+            addGlassCover();
+            animate();
+
+            window.addEventListener('resize', onResize);
+        }
+
+        function setupCompactLayout() {
+            const m = module;
+            axisX[2] = 0; axisY[2] = 0;
+            const d12 = (10 + 100) * m / 2;
+            axisX[1] = -d12; axisY[1] = 0;
+            const d01 = (10 + 60) * m / 2;
+            const angle01 = Math.PI / 1.4; 
+            axisX[0] = axisX[1] + Math.cos(angle01) * d01;
+            axisY[0] = axisY[1] + Math.sin(angle01) * d01;
+            const d23 = (40 + 80) * m / 2;
+            const angle23 = -Math.PI / 2.2; 
+            axisX[3] = axisX[2] + Math.cos(angle23) * d23;
+            axisY[3] = axisY[2] + Math.sin(angle23) * d23;
+            const d34 = (20 + 120) * m / 2;
+            const angle34 = Math.PI / 8;
+            axisX[4] = axisX[3] + Math.cos(angle34) * d34;
+            axisY[4] = axisY[3] + Math.sin(angle34) * d34;
+        }
+
+        function createGearGeometry(teeth) {
+            const pitchRadius = (teeth * module) / 2;
+            const outerRadius = pitchRadius + module * 0.8;
+            const rootRadius = pitchRadius - module * 1.0;
+            const shape = new THREE.Shape();
+            const angleStep = (Math.PI * 2) / teeth;
+            const tAngle = (Math.PI * module / 2) / pitchRadius;
+
+            for (let i = 0; i < teeth; i++) {
+                const a = i * angleStep;
+                const p1 = { x: Math.cos(a - angleStep * 0.4) * rootRadius, y: Math.sin(a - angleStep * 0.4) * rootRadius };
+                const p2 = { x: Math.cos(a - tAngle * 0.5) * pitchRadius, y: Math.sin(a - tAngle * 0.5) * pitchRadius };
+                const p3 = { x: Math.cos(a - tAngle * 0.3) * outerRadius, y: Math.sin(a - tAngle * 0.3) * outerRadius };
+                const p4 = { x: Math.cos(a + tAngle * 0.3) * outerRadius, y: Math.sin(a + tAngle * 0.3) * outerRadius };
+                const p5 = { x: Math.cos(a + tAngle * 0.5) * pitchRadius, y: Math.sin(a + tAngle * 0.5) * pitchRadius };
+                const p6 = { x: Math.cos(a + angleStep * 0.4) * rootRadius, y: Math.sin(a + angleStep * 0.4) * rootRadius };
+                if (i === 0) shape.moveTo(p1.x, p1.y);
+                else shape.lineTo(p1.x, p1.y);
+                shape.quadraticCurveTo(p2.x, p2.y, p3.x, p3.y);
+                shape.lineTo(p4.x, p4.y);
+                shape.quadraticCurveTo(p5.x, p5.y, p6.x, p6.y);
+            }
+            shape.closePath();
+            return new THREE.ExtrudeGeometry(shape, { depth: config.thickness, bevelEnabled: true, bevelThickness: 0.1, bevelSize: 0.06, bevelSegments: 6 });
+        }
+
+        function createPointer(length, color, width) {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: color, emissive: color, emissiveIntensity: 2.2, metalness: 0.8, roughness: 0.2
+            });
+            const bar = new THREE.Mesh(new THREE.BoxGeometry(width, length, 0.3), mat);
+            bar.position.set(0, length/2, 0);
+            group.add(bar);
+            const tip = new THREE.Mesh(new THREE.ConeGeometry(width * 2.8, 2.5, 4), mat);
+            tip.position.set(0, length, 0);
+            group.add(tip);
+            return group;
+        }
+
+        function createLocalDisplay(x, y, radius, color, divisions) {
+            const group = new THREE.Group();
+            group.position.set(x, y, PTR_FRONT_Z + 0.5);
+            
+            const mat = new THREE.MeshStandardMaterial({ 
+                color: color, emissive: color, emissiveIntensity: 2.5 
+            });
+
+            for (let i = 0; i < divisions; i++) {
+                const angle = (i / divisions) * Math.PI * 2;
+                const isMain = i % 5 === 0 || divisions <= 12;
+                const size = isMain ? 4 : 1.5;
+                const width = isMain ? 0.6 : 0.2;
+                
+                const markerGeo = new THREE.BoxGeometry(width, size, 0.1);
+                const marker = new THREE.Mesh(markerGeo, mat);
+                const dist = radius + 2.5;
+                marker.position.x = Math.cos(angle + Math.PI/2) * dist;
+                marker.position.y = Math.sin(angle + Math.PI/2) * dist;
+                marker.rotation.z = angle;
+                group.add(marker);
+            }
+            return group;
+        }
+
+        function rebuildCalibre() {
+            // Platina Principal (Aço Escovado)
+            const plate = new THREE.Mesh(
+                new THREE.CylinderGeometry(85, 90, 0.8, 64), 
+                new THREE.MeshStandardMaterial({ color: 0x111115, metalness: 1.0, roughness: 0.4 })
+            );
+            plate.rotation.x = Math.PI/2;
+            plate.position.set(0, 0, -11.0);
+            scene.add(plate);
+
+            const axesSet = new Set();
+            gearsData.forEach((g) => {
+                const radius = (g.teeth * module) / 2;
+                // MATERIAL DE METAL (METALNESS 1.0)
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: g.color, 
+                    emissive: g.color, 
+                    emissiveIntensity: 0.15, // Glow muito subtil para realçar o metal
+                    metalness: 1.0, 
+                    roughness: 0.15 
+                });
+                const mesh = new THREE.Mesh(createGearGeometry(g.teeth), mat);
+                mesh.position.set(axisX[g.axis], axisY[g.axis], g.z - config.thickness/2);
+                if (g.hasPtr) {
+                    const shaftDepth = PTR_FRONT_Z - g.z;
+                    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, shaftDepth, 16), new THREE.MeshStandardMaterial({ color: 0xdddddd, metalness: 1, roughness: 0.1 }));
+                    shaft.rotation.x = Math.PI/2;
+                    shaft.position.z = shaftDepth/2;
+                    mesh.add(shaft);
+                    
+                    const ptr = createPointer(radius + 10.0, g.color, g.ptrW);
+                    ptr.position.z = shaftDepth;
+                    mesh.add(ptr);
+                    g.pointerObj = ptr; 
+
+                    const divisions = g.id === 'hor' ? 12 : 60;
+                    const localDisplay = createLocalDisplay(axisX[g.axis], axisY[g.axis], radius + 8.0, g.color, divisions);
+                    scene.add(localDisplay);
+                }
+                scene.add(mesh);
+                g.mesh = mesh;
+
+                if (!axesSet.has(g.axis)) {
+                    const pinZStart = -10.8;
+                    const maxZ = Math.max(...gearsData.filter(gd => gd.axis === g.axis).map(gd => gd.z));
+                    const pinTop = maxZ + (config.thickness / 2);
+                    const pinLen = pinTop - pinZStart; 
+                    const pin = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, pinLen, 32), new THREE.MeshStandardMaterial({color: 0x888899, metalness: 1, roughness: 0.1}));
+                    pin.rotation.x = Math.PI/2;
+                    pin.position.set(axisX[g.axis], axisY[g.axis], pinZStart + pinLen/2);
+                    scene.add(pin);
+                    axesSet.add(g.axis);
+                }
+            });
+        }
+
+        function addGlassCover() {
+            const glassRadius = 100;
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff, transparent: true, opacity: 0.1, metalness: 0, roughness: 0,
+                transmission: 0.95, thickness: 2.5, ior: 1.5, clearcoat: 1
+            });
+            const glassMesh = new THREE.Mesh(new THREE.CircleGeometry(glassRadius, 64), glassMat);
+            glassMesh.position.z = GLASS_Z;
+            scene.add(glassMesh);
+
+            const ringMesh = new THREE.Mesh(new THREE.TorusGeometry(glassRadius, 1.5, 16, 100), new THREE.MeshStandardMaterial({ color: 0x444448, metalness: 1, roughness: 0.2 }));
+            ringMesh.position.z = GLASS_Z;
+            scene.add(ringMesh);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (config.mode === 'sim') simTime = new Date(simTime.getTime() + (16.6 * config.speed));
+            else simTime = new Date();
+
+            document.getElementById('digitalClock').innerText = simTime.toLocaleTimeString('pt-PT');
+            const totalSecs = (simTime.getHours() % 12) * 3600 + simTime.getMinutes() * 60 + simTime.getSeconds() + simTime.getMilliseconds() / 1000;
+            
+            const rot0 = - (totalSecs / 60) * Math.PI * 2;
+            gearsData[0].mesh.rotation.z = rot0;
+            const rotAxis1 = - rot0 * (10 / 60) + Math.PI / 60;
+            gearsData[1].mesh.rotation.z = rotAxis1;
+            gearsData[2].mesh.rotation.z = rotAxis1;
+            const rotAxis2 = - rotAxis1 * (10 / 100) + Math.PI / 100;
+            gearsData[3].mesh.rotation.z = rotAxis2;
+            gearsData[4].mesh.rotation.z = rotAxis2;
+            const rotAxis3 = - rotAxis2 * (40 / 80) + Math.PI / 80;
+            gearsData[5].mesh.rotation.z = rotAxis3;
+            gearsData[6].mesh.rotation.z = rotAxis3;
+            const rotAxis4 = - rotAxis3 * (20 / 120) + Math.PI / 120;
+            gearsData[7].mesh.rotation.z = rotAxis4;
+
+            const sV = simTime.getSeconds() + simTime.getMilliseconds() / 1000;
+            const mV = simTime.getMinutes() + sV / 60;
+            const hV = (simTime.getHours() % 12) + mV / 60;
+
+            gearsData[3].pointerObj.rotation.z = (- (mV / 60) * Math.PI * 2) - rotAxis2;
+            gearsData[7].pointerObj.rotation.z = (- (hV / 12) * Math.PI * 2) - rotAxis4;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        document.getElementById('btnMenu').onclick = () => document.getElementById('sidePanel').classList.toggle('open');
+        document.getElementById('inputSpeed').oninput = (e) => {
+            config.speed = parseFloat(e.target.value);
+            document.getElementById('txtSpeed').innerText = config.speed.toFixed(1) + "x";
+        };
+        document.getElementById('btnRealTime').onclick = () => {
+            config.mode = 'real';
+            document.getElementById('btnRealTime').className = "bg-blue-600 text-[9px] font-bold py-2 rounded-lg transition-colors uppercase";
+            document.getElementById('btnSimulate').className = "bg-white/5 text-[9px] font-bold py-2 rounded-lg border border-white/10 transition-colors uppercase";
+        };
+        document.getElementById('btnSimulate').onclick = () => {
+            config.mode = 'sim';
+            simTime = new Date();
+            document.getElementById('btnSimulate').className = "bg-blue-600 text-[9px] font-bold py-2 rounded-lg transition-colors uppercase";
+            document.getElementById('btnRealTime').className = "bg-white/5 text-[9px] font-bold py-2 rounded-lg border border-white/10 transition-colors uppercase";
+        };
+
+        function onResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
+

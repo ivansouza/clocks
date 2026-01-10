@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Annual Clock 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; background-color: #000; overflow: hidden; font-family: 'Inter', sans-serif; }
+        canvas { display: block; }
+        
+        #ui-overlay {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        #info-panel {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 40px;
+            border-radius: 25px;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(0,0,0,1);
+        }
+
+        #speed-control-container {
+            position: absolute;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px 10px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Vertical Slider Styling */
+        input[type=range].vertical-slider {
+            writing-mode: bt-lr; /* IE */
+            -webkit-appearance: slider-vertical; /* WebKit */
+            width: 8px;
+            height: 200px;
+            padding: 0 5px;
+            cursor: pointer;
+        }
+
+        .speed-label {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+        }
+
+        #footer-instructions {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            pointer-events: none;
+            display: flex;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .instruction-tag {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+            padding: 8px 16px;
+            border-radius: 50px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-overlay">
+        <div id="info-panel">
+            <div id="date-display" class="text-xs uppercase tracking-[0.4em] opacity-50 mb-1 text-white"></div>
+            <div id="time-display" class="text-3xl sm:text-5xl font-black tabular-nums tracking-tighter text-white"></div>
+        </div>
+    </div>
+
+    <div id="speed-control-container">
+        <span class="speed-label">Time Warp</span>
+        <input type="range" id="time-multiplier" class="vertical-slider" min="1" max="100000" value="1">
+        <span class="speed-label" id="multiplier-val">Real Time</span>
+    </div>
+
+    <div id="footer-instructions">
+        <div class="instruction-tag">
+            Pinch or use mouse to zoom and orbit
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script id="clockVertexShader" type="x-shader/x-vertex">
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    </script>
+
+    <script id="clockFragmentShader" type="x-shader/x-fragment">
+        varying vec2 vUv;
+        uniform float uDayProgress;
+        uniform bool uIsToday;
+        uniform vec3 uMonthColor;
+
+        #define PI 3.14159265359
+
+        void main() {
+            vec2 uv = vUv - 0.5;
+            float dist = length(uv);
+            float angle = atan(uv.y, uv.x); 
+            
+            if (dist > 0.495) discard;
+
+            vec3 color = vec3(0.0);
+            float normAngle = angle / (2.0 * PI) + 0.5;
+
+            if (uIsToday) {
+                // Today: Strong red rim glow
+                float rim = smoothstep(0.495, 0.475, dist) - smoothstep(0.46, 0.44, dist);
+                color += vec3(1.0, 0.05, 0.05) * rim * 4.0;
+
+                // Red Pie Chart (Elapsed Time - Clockwise)
+                float clockwiseAngle = mod(0.25 - (angle / (2.0 * PI)), 1.0);
+                
+                if (clockwiseAngle < uDayProgress && dist < 0.44) {
+                    float pieGlow = (1.0 - dist * 2.0) * 0.6;
+                    color += vec3(1.0, 0.0, 0.0) * (0.7 + pieGlow);
+                    
+                    float sliceEdge = smoothstep(uDayProgress, uDayProgress - 0.008, clockwiseAngle);
+                    color += vec3(1.0, 0.5, 0.5) * sliceEdge * 1.0;
+                }
+            } else {
+                // Other Days: Monthly Glow
+                float internalGlow = pow(max(0.0, 1.0 - dist * 2.1), 3.2);
+                float rimLight = smoothstep(0.495, 0.48, dist) * 0.6;
+                color += uMonthColor * internalGlow * 1.5; 
+                color += vec3(1.0) * rimLight * 0.8;
+            }
+
+            gl_FragColor = vec4(color, 1.0);
+        }
+    </script>
+
+    <script>
+        window.addEventListener('load', function() {
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 4000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            const year = 2026;
+            const startOfYear = new Date(year, 0, 1);
+            const startOffset = startOfYear.getDay(); 
+            const totalDays = 365;
+            const columns = 21;
+            const spacing = 5.2;
+
+            const MONTHS_SHORT = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+            const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
+
+            const hourPivots = [];
+            const minutePivots = [];
+            const clockMaterials = [];
+            let todaySecondPivot = null;
+            let currentDayIdx = -1;
+
+            const clockGeo = new THREE.PlaneGeometry(4.0, 4.0);
+            const handGeo = new THREE.PlaneGeometry(0.1, 1.0); 
+            const tickGeoM = new THREE.PlaneGeometry(0.04, 0.25);
+            const tickGeoH = new THREE.PlaneGeometry(0.08, 0.5);
+
+            // Virtual Time State
+            let virtualTime = new Date().getTime();
+            let lastFrameTime = performance.now();
+            const speedSlider = document.getElementById('time-multiplier');
+            const speedLabel = document.getElementById('multiplier-val');
+
+            function createTextSprite(text, color, size = 64) {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 256;
+                canvas.height = 128;
+                ctx.fillStyle = color;
+                ctx.font = `bold ${size}px Inter, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, 128, 64);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+                const sprite = new THREE.Sprite(material);
+                sprite.scale.set(4, 2, 1);
+                return sprite;
+            }
+
+            function getMonthColor(m) {
+                const progress = m / 11;
+                const color = new THREE.Color();
+                color.setHSL((160 - (progress * 160)) / 360, 0.8, 0.5);
+                return color;
+            }
+
+            const tickMatM = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.4, transparent: true });
+            const tickMatH = new THREE.MeshBasicMaterial({ color: 0xffffff, opacity: 0.9, transparent: true });
+
+            // Create Headers
+            for (let c = 0; c < columns; c++) {
+                const x = (c - columns / 2) * spacing;
+                const y = (10) * spacing; 
+                scene.add(createTextSprite(WEEKDAYS[c % 7], "rgba(255,255,255,0.6)", 48).clone().position.set(x, y, 0.5));
+            }
+
+            // Create Grid
+            for (let i = 0; i < totalDays; i++) {
+                const dayIndex = i + startOffset;
+                const row = Math.floor(dayIndex / columns);
+                const col = dayIndex % columns;
+                const x = (col - columns / 2) * spacing;
+                const y = -(row - 9) * spacing;
+                const date = new Date(year, 0, i + 1);
+                const monthColor = getMonthColor(date.getMonth());
+
+                if (date.getDate() === 1) {
+                    const label = createTextSprite(MONTHS_SHORT[date.getMonth()], `#${monthColor.getHexString()}`, 40);
+                    label.position.set(x, y + 2.0, 0.5);
+                    scene.add(label);
+                }
+
+                const mat = new THREE.ShaderMaterial({
+                    vertexShader: document.getElementById('clockVertexShader').textContent,
+                    fragmentShader: document.getElementById('clockFragmentShader').textContent,
+                    uniforms: {
+                        uDayProgress: { value: 0 },
+                        uIsToday: { value: false },
+                        uMonthColor: { value: monthColor }
+                    },
+                    transparent: true,
+                    side: THREE.DoubleSide
+                });
+                clockMaterials.push(mat);
+
+                const face = new THREE.Mesh(clockGeo, mat);
+                face.position.set(x, y, 0);
+                scene.add(face);
+
+                const ticksGroup = new THREE.Group();
+                ticksGroup.position.set(x, y, 0.3); 
+                for (let t = 0; t < 60; t++) {
+                    const angle = (t / 60) * Math.PI * 2;
+                    const isHour = t % 5 === 0;
+                    const tick = new THREE.Mesh(isHour ? tickGeoH : tickGeoM, isHour ? tickMatH : tickMatM);
+                    tick.position.set(Math.cos(angle) * 1.7, Math.sin(angle) * 1.7, 0);
+                    tick.rotation.z = angle + Math.PI / 2;
+                    ticksGroup.add(tick);
+                }
+                scene.add(ticksGroup);
+
+                const hPivot = new THREE.Group();
+                hPivot.position.set(x, y, 0.4);
+                const hHand = new THREE.Mesh(handGeo, new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+                hHand.scale.set(1.4, 0.7, 1); hHand.position.y = 0.35; 
+                hPivot.add(hHand);
+                scene.add(hPivot);
+                hourPivots.push(hPivot);
+
+                const mPivot = new THREE.Group();
+                mPivot.position.set(x, y, 0.5);
+                const mHand = new THREE.Mesh(handGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }));
+                mHand.scale.set(0.8, 1.2, 1); mHand.position.y = 0.6; 
+                mPivot.add(mHand);
+                scene.add(mPivot);
+                minutePivots.push(mPivot);
+            }
+
+            // Dedicated Second Hand for the "Today" clock
+            const sPivot = new THREE.Group();
+            const sHand = new THREE.Mesh(handGeo, new THREE.MeshBasicMaterial({ color: 0x3b82f6 }));
+            sHand.scale.set(0.4, 1.4, 1); sHand.position.y = 0.7;
+            sPivot.add(sHand);
+            sPivot.position.z = 0.6;
+            scene.add(sPivot);
+            todaySecondPivot = sPivot;
+
+            camera.position.set(0, -10, 260);
+            controls.target.set(0, -20, 0);
+            controls.update();
+
+            function animate(now) {
+                requestAnimationFrame(animate);
+                
+                const deltaTime = now - lastFrameTime;
+                lastFrameTime = now;
+                const multiplier = parseInt(speedSlider.value);
+                
+                // Advance Virtual Time
+                virtualTime += deltaTime * multiplier;
+                const vDate = new Date(virtualTime);
+
+                // Check if the year overflowed (reset to start of year if necessary for loop)
+                if (vDate.getFullYear() > year) {
+                    virtualTime = new Date(year, 0, 1).getTime();
+                }
+
+                const h = vDate.getHours();
+                const m = vDate.getMinutes();
+                const s = vDate.getSeconds();
+                const ms = vDate.getMilliseconds();
+
+                const sRot = -((s + ms / 1000) * 6) * (Math.PI / 180);
+                const mRot = -((m * 6) + (s * 0.1)) * (Math.PI / 180);
+                const hRot = -((h % 12 * 30) + (m * 0.5)) * (Math.PI / 180);
+                const dayProgress = ((h * 3600) + (m * 60) + s) / 86400;
+
+                // Identify Today's Index based on Virtual Time
+                const newTodayIdx = Math.floor((new Date(vDate.getFullYear(), vDate.getMonth(), vDate.getDate()) - startOfYear) / 86400000);
+
+                for (let i = 0; i < totalDays; i++) {
+                    if (hourPivots[i]) hourPivots[i].rotation.z = hRot;
+                    if (minutePivots[i]) minutePivots[i].rotation.z = mRot;
+                    
+                    const mat = clockMaterials[i];
+                    if (mat) {
+                        const isCurrentToday = (i === newTodayIdx);
+                        mat.uniforms.uIsToday.value = isCurrentToday;
+                        if (isCurrentToday) {
+                            mat.uniforms.uDayProgress.value = dayProgress;
+                            // Move Second Hand to the virtual "Today" clock
+                            const row = Math.floor((i + startOffset) / columns);
+                            const col = (i + startOffset) % columns;
+                            todaySecondPivot.position.x = (col - columns / 2) * spacing;
+                            todaySecondPivot.position.y = -(row - 9) * spacing;
+                            todaySecondPivot.rotation.z = sRot;
+                        }
+                    }
+                }
+
+                // Update UI
+                speedLabel.innerText = multiplier === 1 ? "Real Time" : `${multiplier}x Speed`;
+                document.getElementById('time-display').innerText = vDate.toLocaleTimeString('en-US', { hour12: false });
+                document.getElementById('date-display').innerText = vDate.toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' });
+                
+                const currentMonthCol = getMonthColor(vDate.getMonth());
+                document.getElementById('info-panel').style.color = `#${currentMonthCol.getHexString()}`;
+
+                controls.update();
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate(performance.now());
+        });
+    </script>
+</body>
+</html>
